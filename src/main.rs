@@ -20,7 +20,7 @@ struct Cli {
     #[arg(env)]
     postgres_user: String,
     #[arg(env)]
-    postgres_pass: String,
+    postgres_password: String,
     #[arg(env)]
     postgres_dbname: String,
     #[arg(env)]
@@ -39,7 +39,7 @@ async fn main() {
     let mut postgres_config = PostgresConfig::new();
     postgres_config
         .user(&cli.postgres_user)
-        .password(&cli.postgres_pass)
+        .password(&cli.postgres_password)
         .host(&cli.postgres_host)
         .dbname(&cli.postgres_dbname)
         .port(cli.postgres_port);

@@ -13,6 +13,7 @@ services:
       - POSTGRES_HOST=localhost
       - POSTGRES_PORT=5432
     command:
+      - stac-server
       - config.toml
     depends_on:
       - database
