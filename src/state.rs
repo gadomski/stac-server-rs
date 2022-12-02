@@ -4,7 +4,7 @@ use bb8_postgres::PostgresConnectionManager;
 use tokio_postgres::NoTls;
 
 #[derive(Debug, Clone)]
-pub struct State {
+pub struct ApiState {
     pub pool: Pool<PostgresConnectionManager<NoTls>>,
     pub config: Config,
 }

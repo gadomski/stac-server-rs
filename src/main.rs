@@ -4,7 +4,7 @@ use bb8_postgres::PostgresConnectionManager;
 use clap::Parser;
 use stac_server::{
     handler::{collection, landing_page},
-    Config, State,
+    ApiState, Config,
 };
 use std::{
     fs::File,
@@ -45,7 +45,7 @@ async fn main() {
         .port(cli.postgres_port);
     let manager = PostgresConnectionManager::new(postgres_config, NoTls);
     let pool = Pool::builder().build(manager).await.unwrap();
-    let state = State {
+    let state = ApiState {
         pool,
         config: config.clone(),
     };

@@ -1,10 +1,14 @@
-use crate::{extract::SelfHref, State};
-use axum::{extract, http::StatusCode, response::Json};
+use crate::{extract::SelfHref, ApiState};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::Json,
+};
 use serde_json::Value;
 use stac::{media_type, Catalog, Collection, Link};
 
 pub async fn landing_page(
-    extract::State(state): extract::State<State>,
+    State(state): State<ApiState>,
     SelfHref(self_href): SelfHref,
 ) -> Result<Json<Catalog>, (StatusCode, String)> {
     let mut catalog = Catalog::new(state.config.catalog.id);
@@ -50,8 +54,8 @@ pub async fn landing_page(
 }
 
 pub async fn collection(
-    extract::Path(collection_id): extract::Path<String>,
-    extract::State(state): extract::State<State>,
+    Path(collection_id): Path<String>,
+    State(state): State<ApiState>,
 ) -> Result<Json<Collection>, (StatusCode, String)> {
     let connection = state.pool.get().await.map_err(internal_error)?;
     let row = connection
