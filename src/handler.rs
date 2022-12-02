@@ -1,4 +1,4 @@
-use crate::{extract::SelfHref, ApiState};
+use crate::{extract::LinkBuilder, ApiState};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -9,21 +9,12 @@ use stac::{media_type, Catalog, Collection, Link};
 
 pub async fn landing_page(
     State(state): State<ApiState>,
-    SelfHref(self_href): SelfHref,
+    link_builder: LinkBuilder,
 ) -> Result<Json<Catalog>, (StatusCode, String)> {
     let mut catalog = Catalog::new(state.config.catalog.id);
     catalog.description = state.config.catalog.description;
-    let self_link = Link {
-        href: self_href,
-        rel: "self".to_string(),
-        r#type: Some(media_type::JSON.to_string()),
-        title: None,
-        additional_fields: Default::default(),
-    };
-    let mut root_link = self_link.clone();
-    root_link.rel = "root".to_string();
-    catalog.links.push(self_link);
-    catalog.links.push(root_link);
+    catalog.links.push(link_builder.self_link());
+    catalog.links.push(link_builder.root_link());
     catalog.additional_fields.insert(
         "conformsTo".to_string(),
         vec!["https://api.stacspec.org/v1.0.0-rc.2/core".to_string()].into(),
