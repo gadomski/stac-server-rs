@@ -5,7 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
     RequestPartsExt,
 };
-use stac::{media_type, Link};
+use stac::{media_type, Collection, Link};
 
 #[derive(Debug)]
 pub struct LinkBuilder {
@@ -14,7 +14,7 @@ pub struct LinkBuilder {
 }
 
 impl LinkBuilder {
-    pub fn self_link(&self) -> Link {
+    pub fn self_(&self) -> Link {
         Link {
             href: format!("http://{}{}", self.host, self.original_uri),
             rel: "self".to_string(),
@@ -24,13 +24,23 @@ impl LinkBuilder {
         }
     }
 
-    pub fn root_link(&self) -> Link {
+    pub fn root(&self) -> Link {
         // TODO this should be able to adapt to mounting points.
         Link {
             href: format!("http://{}/", self.host),
             rel: "root".to_string(),
             r#type: Some(media_type::JSON.to_string()),
             title: None,
+            additional_fields: Default::default(),
+        }
+    }
+
+    pub fn collection(&self, collection: Collection) -> Link {
+        Link {
+            href: format!("http://{}/collections/{}", self.host, collection.id),
+            rel: "root".to_string(),
+            r#type: Some(media_type::JSON.to_string()),
+            title: collection.title,
             additional_fields: Default::default(),
         }
     }

@@ -1,10 +1,7 @@
-use crate::Config;
-use bb8::Pool;
-use bb8_postgres::PostgresConnectionManager;
-use tokio_postgres::NoTls;
+use crate::{ApiConfig, Backend};
 
 #[derive(Debug, Clone)]
-pub struct ApiState {
-    pub pool: Pool<PostgresConnectionManager<NoTls>>,
-    pub config: Config,
+pub struct ApiState<B: Backend> {
+    pub backend: B,
+    pub config: ApiConfig,
 }

@@ -1,17 +1,16 @@
 use axum::{routing::get, Router, Server};
-use bb8::Pool;
-use bb8_postgres::PostgresConnectionManager;
 use clap::Parser;
 use stac_server::{
+    backend::PgstacBackend,
     handler::{collection, landing_page},
-    ApiState, Config,
+    ApiConfig, ApiState,
 };
 use std::{
     fs::File,
     io::{BufReader, Read},
     path::PathBuf,
 };
-use tokio_postgres::{Config as PostgresConfig, NoTls};
+use tokio_postgres::Config;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
@@ -35,18 +34,17 @@ async fn main() {
     let mut reader = BufReader::new(File::open(cli.config_file).unwrap());
     let mut config = String::new();
     reader.read_to_string(&mut config).unwrap();
-    let config: Config = toml::from_str(&config).unwrap();
-    let mut postgres_config = PostgresConfig::new();
+    let config: ApiConfig = toml::from_str(&config).unwrap();
+    let mut postgres_config = Config::new();
     postgres_config
         .user(&cli.postgres_user)
         .password(&cli.postgres_password)
         .host(&cli.postgres_host)
         .dbname(&cli.postgres_dbname)
         .port(cli.postgres_port);
-    let manager = PostgresConnectionManager::new(postgres_config, NoTls);
-    let pool = Pool::builder().build(manager).await.unwrap();
+    let backend = PgstacBackend::new(postgres_config).await.unwrap();
     let state = ApiState {
-        pool,
+        backend,
         config: config.clone(),
     };
     let app = Router::new()

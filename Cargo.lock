@@ -1105,6 +1105,7 @@ dependencies = [
  "serde",
  "serde_json",
  "stac",
+ "thiserror",
  "tokio",
  "tokio-postgres",
  "toml",

@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 #[derive(Clone, Deserialize, Debug)]
-pub struct Config {
+pub struct ApiConfig {
     pub addr: String,
     pub catalog: CatalogConfig,
 }
