@@ -4,6 +4,7 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
+use serde_json::{json, Value};
 use stac::{Catalog, Collection};
 
 pub async fn landing_page<B: Backend>(
@@ -24,6 +25,16 @@ pub async fn landing_page<B: Backend>(
     }
 
     Ok(Json(catalog))
+}
+
+pub async fn collections<B: Backend>(
+    State(state): State<ApiState<B>>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let collections = state.backend.collections().await.map_err(internal_error)?;
+    let response = json!({
+        "collections": collections.into_iter().map(|collection| serde_json::to_value(collection)).collect::<Result<Vec<_>, _>>().map_err(internal_error)?,
+    });
+    Ok(Json(response))
 }
 
 pub async fn collection<B: Backend>(

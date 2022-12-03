@@ -2,7 +2,7 @@ use axum::{routing::get, Router, Server};
 use clap::Parser;
 use stac_server::{
     backend::PgstacBackend,
-    handler::{collection, landing_page},
+    handler::{collection, collections, landing_page},
     ApiConfig, ApiState,
 };
 use std::{
@@ -49,6 +49,7 @@ async fn main() {
     };
     let app = Router::new()
         .route("/", get(landing_page))
+        .route("/collections", get(collections))
         .route("/collections/:collection_id", get(collection))
         .with_state(state.clone());
     Server::bind(&config.addr.parse().unwrap())
