@@ -1,0 +1,7 @@
+browseable = true
+ogc-api-features = true
+
+[catalog]
+id = "stac-server-rs-example-catalog"
+description = "A simple catalog for demonstrating the use of stac-server-rs."
+title = "stac-server-rs example catalog"

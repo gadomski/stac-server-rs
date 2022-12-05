@@ -1,22 +1,40 @@
-use serde_json::Value;
+use stac::Item;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
+    #[error("addr parse error: {0}")]
+    AddrParse(#[from] std::net::AddrParseError),
+
     #[error("bb8 user error: {0}")]
     Bb8UserError(Box<dyn std::error::Error>),
 
-    #[error("collections are not an array: {0:?}")]
-    CollectionsAreNotAnArray(Value),
+    #[error("hyper error: {0}")]
+    Hyper(#[from] hyper::Error),
 
-    #[error("serde_json error: {0}")]
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("reqwest error: {0}")]
+    Reqwest(#[from] reqwest::Error),
+
+    #[error("no collection on item: {0:?}")]
+    NoCollection(Item),
+
+    #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-
-    #[error("tokio postgres error: {0}")]
-    TokioPosgres(#[from] tokio_postgres::Error),
 
     #[error("timed out")]
     TimedOut,
+
+    #[error("tokio postgres error: {0}")]
+    TokioPostgres(#[from] tokio_postgres::Error),
+
+    #[error("toml de error: {0}")]
+    TomlDe(#[from] toml::de::Error),
+
+    #[error("unknown collection id: {0}")]
+    UnknownCollectionId(String),
 }
 
 impl<E> From<bb8::RunError<E>> for Error

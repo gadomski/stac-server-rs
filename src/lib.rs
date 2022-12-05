@@ -1,8 +1,9 @@
 pub mod backend;
 mod config;
 mod error;
-pub mod extract;
-pub mod handler;
+mod extract;
+mod handler;
+mod router;
 mod state;
 
-pub use {backend::Backend, config::ApiConfig, error::Error, state::ApiState};
+pub use {backend::Backend, config::Config, error::Error, router::api, state::ApiState};

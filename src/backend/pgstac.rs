@@ -1,57 +1,70 @@
-use crate::Error;
+use crate::{Backend, Error};
 use async_trait::async_trait;
-use bb8::{Pool, PooledConnection};
+use bb8::{Pool, PooledConnection, RunError};
 use bb8_postgres::PostgresConnectionManager;
-use serde_json::Value;
-use stac::Collection;
-use tokio_postgres::{Config, NoTls};
+use serde::de::DeserializeOwned;
+use stac::{Collection, Item};
+use std::error::Error as _;
+use tokio_postgres::{
+    types::{ToSql, WasNull},
+    Config, NoTls, ToStatement,
+};
 
-#[derive(Debug, Clone)]
-pub struct Backend {
+#[derive(Clone, Debug)]
+pub struct Pgstac {
     pool: Pool<PostgresConnectionManager<NoTls>>,
 }
 
-impl Backend {
-    pub async fn new(config: Config) -> Result<Backend, Error> {
+impl Pgstac {
+    pub async fn new(config: Config) -> Result<Pgstac, Error> {
         let manager = PostgresConnectionManager::new(config, NoTls);
-        let pool = Pool::builder().build(manager).await.unwrap();
-        Ok(Backend { pool })
+        let pool = Pool::builder().build(manager).await?;
+        Ok(Pgstac { pool })
     }
 
     async fn connection(
         &self,
     ) -> Result<
         PooledConnection<'_, PostgresConnectionManager<NoTls>>,
-        bb8::RunError<tokio_postgres::Error>,
+        RunError<tokio_postgres::Error>,
     > {
         self.pool.get().await
+    }
+
+    async fn query_one<T: ?Sized + ToStatement, D: DeserializeOwned>(
+        &self,
+        statement: &T,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> Result<D, Error> {
+        let connection = self.connection().await?;
+        let row = connection.query_one(statement, params).await?;
+        let value = row.try_get(0)?;
+        serde_json::from_value(value).map_err(Error::from)
     }
 }
 
 #[async_trait]
-impl crate::backend::Backend for Backend {
+impl Backend for Pgstac {
     async fn collections(&self) -> Result<Vec<Collection>, Error> {
-        let connection = self.connection().await?;
-        let row = connection
-            .query_one("SELECT pgstac.all_collections();", &[])
-            .await?;
-        let value: Value = row.try_get(0)?;
-        if let Value::Array(values) = value {
-            values
-                .into_iter()
-                .map(|value| serde_json::from_value(value).map_err(Error::from))
-                .collect()
-        } else {
-            Err(Error::CollectionsAreNotAnArray(value))
-        }
+        self.query_one("SELECT pgstac.all_collections();", &[])
+            .await
     }
 
-    async fn collection(&self, id: &str) -> Result<Collection, Error> {
-        let connection = self.connection().await?;
-        let row = connection
-            .query_one("SELECT * FROM pgstac.get_collection($1);", &[&id])
-            .await?;
-        let value: Value = row.try_get(0)?;
-        serde_json::from_value(value).map_err(Error::from)
+    async fn collection(&self, id: &str) -> Result<Option<Collection>, Error> {
+        // TODO deal with 404s
+        self.query_one("SELECT * FROM pgstac.get_collection($1);", &[&id])
+            .await
+    }
+
+    async fn add_collection(&mut self, collection: Collection) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    async fn items(&self, collection_id: &str) -> Result<Vec<Item>, Error> {
+        unimplemented!()
+    }
+
+    async fn add_item(&mut self, item: Item) -> Result<(), Error> {
+        unimplemented!()
     }
 }

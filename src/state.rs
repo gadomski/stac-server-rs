@@ -1,7 +1,7 @@
-use crate::{ApiConfig, Backend};
+use crate::{Backend, Config};
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct ApiState<B: Backend> {
+    pub config: Config,
     pub backend: B,
-    pub config: ApiConfig,
 }

@@ -1,64 +1,46 @@
 use async_trait::async_trait;
 use axum::{
-    extract::{FromRequestParts, Host, OriginalUri},
-    http::{request::Parts, Uri},
-    response::{IntoResponse, Response},
+    extract::{FromRequestParts, Host},
+    http::request::Parts,
+    response::Response,
     RequestPartsExt,
 };
-use stac::{media_type, Collection, Link};
+use stac::Collection;
 
-#[derive(Debug)]
-pub struct LinkBuilder {
-    host: String,
-    original_uri: Uri,
+pub struct HrefBuilder {
+    host: Option<String>,
 }
 
-impl LinkBuilder {
-    pub fn self_(&self) -> Link {
-        Link {
-            href: format!("http://{}{}", self.host, self.original_uri),
-            rel: "self".to_string(),
-            r#type: Some(media_type::JSON.to_string()),
-            title: None,
-            additional_fields: Default::default(),
+impl HrefBuilder {
+    pub fn root(&self) -> String {
+        if let Some(host) = &self.host {
+            format!("http://{}/", host) // TODO check http/https
+                                        // TODO allow for mounting points
+        } else {
+            "/".to_string()
         }
     }
 
-    pub fn root(&self) -> Link {
-        // TODO this should be able to adapt to mounting points.
-        Link {
-            href: format!("http://{}/", self.host),
-            rel: "root".to_string(),
-            r#type: Some(media_type::JSON.to_string()),
-            title: None,
-            additional_fields: Default::default(),
-        }
+    pub fn collection(&self, collection: &Collection) -> String {
+        self.href(&format!("collections/{}", collection.id))
     }
 
-    pub fn collection(&self, collection: Collection) -> Link {
-        Link {
-            href: format!("http://{}/collections/{}", self.host, collection.id),
-            rel: "root".to_string(),
-            r#type: Some(media_type::JSON.to_string()),
-            title: collection.title,
-            additional_fields: Default::default(),
-        }
+    pub fn href(&self, s: &str) -> String {
+        let mut href = self.root();
+        href.push_str(s);
+        href
     }
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for LinkBuilder
+impl<S> FromRequestParts<S> for HrefBuilder
 where
     S: Send + Sync,
 {
     type Rejection = Response;
 
     async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
-        let Host(host) = parts
-            .extract::<Host>()
-            .await
-            .map_err(|err| err.into_response())?;
-        let OriginalUri(original_uri) = parts.extract::<OriginalUri>().await.unwrap();
-        Ok(LinkBuilder { host, original_uri })
+        let host = parts.extract::<Host>().await.ok().map(|Host(host)| host);
+        Ok(HrefBuilder { host })
     }
 }
