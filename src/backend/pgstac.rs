@@ -4,9 +4,8 @@ use bb8::{Pool, PooledConnection, RunError};
 use bb8_postgres::PostgresConnectionManager;
 use serde::de::DeserializeOwned;
 use stac::{Collection, Item};
-use std::error::Error as _;
 use tokio_postgres::{
-    types::{ToSql, WasNull},
+    types::{Json, ToSql},
     Config, NoTls, ToStatement,
 };
 
@@ -46,7 +45,7 @@ impl Pgstac {
 #[async_trait]
 impl Backend for Pgstac {
     async fn collections(&self) -> Result<Vec<Collection>, Error> {
-        self.query_one("SELECT pgstac.all_collections();", &[])
+        self.query_one("SELECT * FROM pgstac.all_collections();", &[])
             .await
     }
 
@@ -57,7 +56,11 @@ impl Backend for Pgstac {
     }
 
     async fn add_collection(&mut self, collection: Collection) -> Result<(), Error> {
-        unimplemented!()
+        self.query_one(
+            "SELECT * FROM pgstac.create_collection($1::text::jsonb)",
+            &[&Json(collection)],
+        )
+        .await
     }
 
     async fn items(&self, collection_id: &str) -> Result<Vec<Item>, Error> {

@@ -1,0 +1,28 @@
+version: "3"
+services:
+  stac-sever-rs:
+    container_name: stac-server-rs
+    image: gadomski/stac-server-rs
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    command: stac-server 0.0.0.0:3000 example-config.toml --href /app/data/joplin/collection.json pgstac username password postgis pgstac 5432
+    depends_on:
+      - pgstac
+
+  pgstac:
+    container_name: pgstac
+    image: ghcr.io/stac-utils/pgstac:v0.6.10
+    environment:
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgis
+      - PGUSER=username
+      - PGPASSWORD=password
+      - PGHOST=localhost
+      - PGDATABASE=postgis
+    ports:
+      - "5439:5432"
+    command: postgres -N 500
