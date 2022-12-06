@@ -1,19 +1,38 @@
 # stac-server-rs
 
 A simple STAC server written in Rust.
-To run an example server:
+
+## Installation
+
+Install rust.
+We recommend [rustup](https://rustup.rs/).
+Then, install **stac-server-rs**:
+
+```shell
+cargo install --git http://github.com/gadomski/stac-server-rs
+```
+
+## Usage
+
+To run a simple memory-backed server, initialized with a single collection:
 
 ```shell
 stac-server 0.0.0.0:3000 example-config.toml --href data/joplin/collection.json simple
 ```
 
-## pgstac
+### pgstac
 
-If you need a simple pgstac database, check out the Joplin example in the [stac-fastapi repo](https://github.com/stac-utils/stac-fastapi/blob/97b091127e41b24a600cdbc49466074562f554ae/docker-compose.yml#L99-L115):
+**stac-server-rs** currently comes with two backends: a simple in-memory store, and [pgstac](https://github.com/stac-utils/pgstac).
+Our [docker-compose](./docker-compose.yml) file provides a simple way to run **stac-server-rs** against a local **pgstac** instance, loaded with some simple [test data](data//joplin/):
 
 ```shell
-git clone https://github.com/stac-utils/stac-fastapi && cd stac-fastapi
-make loadjoplin-pgstac
-make docker-run-pgstac
-stac-server 0.0.0.0:3000 example-config.toml pgstac username password postgis localhost 5439
+docker-compose up
+```
+
+You can then browse the **pgstac**-backed server at <http://localhost:3000>.
+
+To point the server at an existing **pgstac** instance, check the arguments for the `pgstac` subcommand:
+
+```shell
+stac-server pgstac --help
 ```
