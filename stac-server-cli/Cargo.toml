@@ -1,0 +1,21 @@
+[package]
+name = "stac-server-cli"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+axum = "0.6"
+clap = { version = "4", features = ["derive"] }
+pgstac = { version = "0.0.1", path = "../pgstac" }
+stac = "0.2"
+stac-async = "0.2"
+stac-backend = { version = "0.0.1", path = "../stac-backend" }
+stac-server = { version = "0.0.1", path = "../stac-server" }
+tokio = { version = "1.23", features = ["macros", "rt-multi-thread"] }
+
+[[bin]]
+path = "src/main.rs"
+name = "stac-server"
+test = false
+doc = false

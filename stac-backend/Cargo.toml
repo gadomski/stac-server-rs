@@ -1,0 +1,9 @@
+[package]
+name = "stac-backend"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1"
+stac = "0.2"
+thiserror = "1"
