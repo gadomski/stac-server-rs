@@ -1,3 +1,5 @@
+addr = "127.0.0.1:7822"
+
 [catalog]
 id = "stac-server-rs"
 description = "An example implementation of a STAC API using stac-server-rs"
