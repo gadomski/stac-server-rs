@@ -7,7 +7,11 @@ use std::{net::SocketAddr, path::PathBuf};
 
 #[derive(Debug, Parser)]
 struct Cli {
-    config: PathBuf,
+    /// Server configuration. If not provided, a very simple default
+    /// configuration will be used.
+    config: Option<PathBuf>,
+
+    /// The address to serve the API. If not provided, will be read from the configuration.
     addr: Option<String>,
 
     #[command(subcommand)]
@@ -23,7 +27,11 @@ enum Backend {
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-    let mut config = Config::from_toml(cli.config).await.unwrap();
+    let mut config = if let Some(config) = cli.config {
+        Config::from_toml(config).await.unwrap()
+    } else {
+        stac_server_cli::default_config()
+    };
     let addr = if let Some(addr) = &cli.addr {
         config.addr = Some(addr.to_string());
         addr

@@ -1,6 +1,7 @@
 use anyhow::Result;
 use stac::Value;
 use stac_backend::{Backend, MemoryBackend};
+use stac_server::Config;
 use std::path::PathBuf;
 
 pub async fn load_files_into_memory_backend(
@@ -23,4 +24,9 @@ pub async fn load_files_into_memory_backend(
     }
     // TODO add items
     Ok(())
+}
+
+pub fn default_config() -> Config {
+    let s = include_str!("../data/config.toml");
+    s.parse().unwrap()
 }

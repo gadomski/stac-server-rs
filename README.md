@@ -12,11 +12,18 @@ Then:
 cargo install --git https://github.com/gadomski/stac-server-rs
 ```
 
-You'll need a simple configuration file, use [the example configuration](./data/config.toml) as a starting point.
-To start a simple memory-backed server, loaded in with collections, items, and item collections at local paths:
+To start a simple memory-backed server:
 
 ```shell
-stac-server config.toml memory collection.json item-collection.json
+stac-server memory
+```
+
+If you have collection and items you'd like to load into the memory backend, provide them at the command-line:
+
+```shell
+stac-server memory \
+    https://planetarycomputer.microsoft.com/api/stac/v1/collections/3dep-seamless \
+    https://planetarycomputer.microsoft.com/api/stac/v1/collections/3dep-seamless/items/n34w116-13
 ```
 
 ### pgstac
