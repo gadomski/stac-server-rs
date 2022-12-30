@@ -31,7 +31,7 @@ stac-server memory \
 A [pgstac](https://github.com/stac-utils/pgstac) backend is provided:
 
 ```shell
-stac-server config.toml pgstac postgres://username:password@localhost/postgis
+stac-server pgstac postgres://username:password@localhost/postgis
 ```
 
 If you need a **pgstac** database with a bunch of collections and items, may we recommend [pc-mini](https://github.com/gadomski/pc-mini).
