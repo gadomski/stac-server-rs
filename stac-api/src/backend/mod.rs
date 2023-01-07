@@ -1,3 +1,11 @@
+mod memory;
+#[cfg(feature = "pgstac")]
+mod pgstac;
+
+#[cfg(feature = "pgstac")]
+pub use self::pgstac::PgstacBackend;
+pub use memory::MemoryBackend;
+
 use crate::Result;
 use async_trait::async_trait;
 use stac::Collection;

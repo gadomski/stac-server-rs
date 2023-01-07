@@ -7,10 +7,9 @@ edition = "2021"
 anyhow = "1"
 axum = "0.6"
 clap = { version = "4", features = ["derive"] }
-pgstac = { version = "0.0.1", path = "../pgstac" }
 stac = "0.2"
 stac-async = "0.2"
-stac-backend = { version = "0.0.1", path = "../stac-backend" }
+stac-api = { version = "0.0.1", path = "../stac-api", features = ["pgstac"] }
 stac-server = { version = "0.0.1", path = "../stac-server" }
 tokio = { version = "1.23", features = ["macros", "rt-multi-thread"] }
 
@@ -19,3 +18,4 @@ path = "src/main.rs"
 name = "stac-server"
 test = false
 doc = false
+doctest = false

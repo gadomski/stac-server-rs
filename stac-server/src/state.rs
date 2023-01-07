@@ -1,6 +1,6 @@
 use crate::Config;
 use stac::Catalog;
-use stac_backend::Backend;
+use stac_api::Backend;
 
 /// Shared state for the API.
 #[derive(Clone, Debug)]

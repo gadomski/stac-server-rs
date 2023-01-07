@@ -1,27 +1,32 @@
 use axum::Server;
-use clap::{Parser, Subcommand};
-use pgstac::PgstacBackend;
-use stac_backend::MemoryBackend;
+use clap::Parser;
+use stac_api::{MemoryBackend, PgstacBackend};
 use stac_server::Config;
 use std::{net::SocketAddr, path::PathBuf};
 
 #[derive(Debug, Parser)]
 struct Cli {
-    /// Server configuration. If not provided, a very simple default
-    /// configuration will be used.
+    /// Server configuration.
+    ///
+    /// If not provided, a very simple default configuration will be used.
+    #[arg(short, long)]
     config: Option<PathBuf>,
 
-    /// The address to serve the API. If not provided, will be read from the configuration.
+    /// The address to serve the API.
+    ///
+    /// If not provided, will be read from the configuration.
+    #[arg(short, long)]
     addr: Option<String>,
 
-    #[command(subcommand)]
-    backend: Backend,
-}
+    /// The address of the pgstac database.
+    ///
+    /// If not provided, a memory backend will be used.
+    #[arg(short, long)]
+    pgstac: Option<String>,
 
-#[derive(Debug, Subcommand)]
-enum Backend {
-    Memory { paths: Vec<PathBuf> },
-    Pgstac { connection: String },
+    /// The hrefs of STAC collections and items to read and load into the
+    /// backend when starting the server.
+    hrefs: Vec<String>,
 }
 
 #[tokio::main]
@@ -41,18 +46,18 @@ async fn main() {
         panic!("addr must be provided on the command line or in the config");
     };
     let addr = addr.parse::<SocketAddr>().unwrap();
-    let router = match cli.backend {
-        Backend::Memory { paths } => {
-            let mut backend = MemoryBackend::new();
-            stac_server_cli::load_files_into_memory_backend(&mut backend, &paths)
-                .await
-                .unwrap();
-            stac_server::api(backend, config)
-        }
-        Backend::Pgstac { connection } => {
-            let backend = PgstacBackend::from_str(&connection).await.unwrap();
-            stac_server::api(backend, config)
-        }
+    let router = if let Some(pgstac) = cli.pgstac {
+        let mut backend = PgstacBackend::from_str(&pgstac).await.unwrap();
+        stac_server_cli::load_files_into_backend(&mut backend, &cli.hrefs)
+            .await
+            .unwrap();
+        stac_server::api(backend, config)
+    } else {
+        let mut backend = MemoryBackend::new();
+        stac_server_cli::load_files_into_backend(&mut backend, &cli.hrefs)
+            .await
+            .unwrap();
+        stac_server::api(backend, config)
     };
     println!("Serving on http://{}", addr);
     Server::bind(&addr)

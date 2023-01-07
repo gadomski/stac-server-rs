@@ -1,7 +1,7 @@
 use crate::State;
 use axum::{async_trait, extract::FromRequestParts, http::request::Parts};
 use stac::Collection;
-use stac_backend::Backend;
+use stac_api::Backend;
 use std::convert::Infallible;
 
 #[derive(Debug)]
@@ -51,7 +51,7 @@ mod tests {
     use super::Hrefs;
     use crate::{Config, State};
     use axum::{extract::FromRequestParts, http::Request};
-    use stac_backend::MemoryBackend;
+    use stac_api::MemoryBackend;
 
     #[tokio::test]
     async fn hrefs_use_addr() {

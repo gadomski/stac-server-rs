@@ -18,7 +18,7 @@ impl MemoryBackend {
     /// # Examples
     ///
     /// ```
-    /// use stac_backend::MemoryBackend;
+    /// use stac_api::MemoryBackend;
     /// let backend = MemoryBackend::new();
     /// ```
     pub fn new() -> MemoryBackend {

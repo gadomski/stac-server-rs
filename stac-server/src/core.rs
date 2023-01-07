@@ -2,7 +2,7 @@ use crate::{extract::Hrefs, Result, State};
 use axum::{extract, Json};
 use serde::Serialize;
 use stac::{Catalog, Link, Links};
-use stac_backend::Backend;
+use stac_api::Backend;
 
 #[derive(Debug, Serialize)]
 pub struct LandingPage {
@@ -49,7 +49,7 @@ mod tests {
     use super::LandingPage;
     use crate::extract::Hrefs;
     use stac::{Catalog, Collection, Links, Validate};
-    use stac_backend::{Backend, MemoryBackend};
+    use stac_api::{Backend, MemoryBackend};
 
     #[tokio::test]
     async fn new_landing_page() {

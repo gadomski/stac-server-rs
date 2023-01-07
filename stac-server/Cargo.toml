@@ -7,7 +7,7 @@ edition = "2021"
 axum = "0.6"
 stac = "0.2"
 stac-async = "0.2"
-stac-backend = { version = "0.0.1", path = "../stac-backend" }
+stac-api = { version = "0.0.1", path = "../stac-api" }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.23", features = ["fs"] }
 toml = "0.5"

@@ -11,9 +11,9 @@ pub enum Error {
     #[error(transparent)]
     StacAsync(#[from] stac_async::Error),
 
-    /// stac_backend::Error
+    /// stac_api::Error
     #[error(transparent)]
-    StacBackend(#[from] stac_backend::Error),
+    StacBackend(#[from] stac_api::Error),
 
     /// toml::de::Error
     #[error(transparent)]

@@ -1,6 +1,6 @@
 use crate::{Config, State};
 use axum::{routing::get, Router};
-use stac_backend::Backend;
+use stac_api::Backend;
 
 /// Returns the STAC API router.
 ///
@@ -8,7 +8,7 @@ use stac_backend::Backend;
 ///
 /// ```
 /// use stac_server::Config;
-/// use stac_backend::MemoryBackend;
+/// use stac_api::MemoryBackend;
 ///
 /// # tokio_test::block_on(async {
 /// let config = Config::from_toml("data/config.toml").await.unwrap();
@@ -29,7 +29,7 @@ mod tests {
         body::Body,
         http::{Request, StatusCode},
     };
-    use stac_backend::MemoryBackend;
+    use stac_api::MemoryBackend;
     use tower::ServiceExt;
 
     async fn test_config() -> Config {
