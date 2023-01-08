@@ -45,3 +45,8 @@ We tried our best to separate responsibilities, so there's a couple of crates in
 - [stac-server-cli](./stac-server-cli/) wraps everything together into an executable
 
 This hopefully will make it easy to, e.g., implement other backends, or use the server api in a different application (e.g. as part of another service).
+
+## License
+
+**stac-rs** is dual-licensed under both the MIT license and the Apache license (Version 2.0).
+See [LICENSE-APACHE](./LICENSE-APACHE) and [LICENSE-MIT](./LICENSE-MIT) for details.
