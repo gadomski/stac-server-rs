@@ -7,11 +7,12 @@ edition = "2021"
 anyhow = "1"
 axum = "0.6"
 clap = { version = "4", features = ["derive"] }
-stac = "0.2"
-stac-async = "0.2"
+stac = "0.3"
+stac-async = "0.3"
 stac-api = { version = "0.0.1", path = "../stac-api", features = ["pgstac"] }
 stac-server = { version = "0.0.1", path = "../stac-server" }
 tokio = { version = "1.23", features = ["macros", "rt-multi-thread"] }
+tokio-postgres = "0.7"
 
 [[bin]]
 path = "src/main.rs"

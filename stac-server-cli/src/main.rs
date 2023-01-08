@@ -3,6 +3,7 @@ use clap::Parser;
 use stac_api::{MemoryBackend, PgstacBackend};
 use stac_server::Config;
 use std::{net::SocketAddr, path::PathBuf};
+use tokio_postgres::NoTls;
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -47,6 +48,8 @@ async fn main() {
     };
     let addr = addr.parse::<SocketAddr>().unwrap();
     let router = if let Some(pgstac) = cli.pgstac {
+        // Test the connection to blow it up early.
+        let _ = tokio_postgres::connect(&pgstac, NoTls).await.unwrap();
         let mut backend = PgstacBackend::from_str(&pgstac).await.unwrap();
         stac_server_cli::load_files_into_backend(&mut backend, &cli.hrefs)
             .await

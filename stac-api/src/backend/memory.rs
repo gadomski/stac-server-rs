@@ -35,6 +35,11 @@ impl Backend for MemoryBackend {
         Ok(collections.values().cloned().collect())
     }
 
+    async fn collection(&self, id: &str) -> Result<Option<Collection>> {
+        let collections = self.collections.read().unwrap();
+        Ok(collections.get(id).cloned())
+    }
+
     async fn add_collection(&mut self, collection: Collection) -> Result<Option<Collection>> {
         let mut collections = self.collections.write().unwrap();
         Ok(collections.insert(collection.id.clone(), collection))

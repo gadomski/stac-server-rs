@@ -5,8 +5,8 @@ edition = "2021"
 
 [dependencies]
 axum = "0.6"
-stac = "0.2"
-stac-async = "0.2"
+stac = "0.3"
+stac-async = "0.3"
 stac-api = { version = "0.0.1", path = "../stac-api" }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.23", features = ["fs"] }
@@ -14,7 +14,7 @@ toml = "0.5"
 thiserror = "1"
 
 [dev-dependencies]
-stac = { version = "0.2", features = ["jsonschema"] }
+stac = { version = "0.3", features = ["jsonschema"] }
 tokio = { version = "1.23", features = ["rt", "macros"]}
 tokio-test = { version = "0.4" }
 tower = "0.4"

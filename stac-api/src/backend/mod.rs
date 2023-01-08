@@ -16,6 +16,9 @@ pub trait Backend: Send + Sync + Clone {
     /// Returns collections.
     async fn collections(&self) -> Result<Vec<Collection>>;
 
+    /// Returns a collection.
+    async fn collection(&self, id: &str) -> Result<Option<Collection>>;
+
     /// Adds a collection to the backend.
     async fn add_collection(&mut self, collection: Collection) -> Result<Option<Collection>>;
 }

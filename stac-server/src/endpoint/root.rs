@@ -18,6 +18,8 @@ impl LandingPage {
         catalog.set_link(Link::root(hrefs.root()));
         catalog.set_link(Link::self_(hrefs.root()));
         catalog.set_link(Link::new(hrefs.href("api"), "service-desc"));
+        catalog.set_link(Link::new(hrefs.href("conformance"), "conformance"));
+        catalog.set_link(Link::new(hrefs.href("collections"), "data"));
 
         for collection in backend.collections().await? {
             catalog
@@ -27,7 +29,11 @@ impl LandingPage {
 
         Ok(LandingPage {
             catalog,
-            conforms_to: vec!["https://api.stacspec.org/v1.0.0-rc.2/core".to_string()],
+            conforms_to: vec![
+                "https://api.stacspec.org/v1.0.0-rc.2/core".to_string(),
+                "https://api.stacspec.org/v1.0.0-rc.2/ogcapi-features".to_string(),
+                "https://api.stacspec.org/v1.0.0-rc.2/collections".to_string(),
+            ],
         })
     }
 }
@@ -72,10 +78,21 @@ mod tests {
         let service_desc_link = catalog.link("service-desc").unwrap();
         assert_eq!(service_desc_link.href, "/api");
 
+        let conformance_link = catalog.link("conformance").unwrap();
+        assert_eq!(conformance_link.href, "/conformance");
+
+        let collections_link = catalog.link("data").unwrap();
+        assert_eq!(collections_link.href, "/collections");
+
         catalog.validate().unwrap();
 
         let conforms_to = landing_page.conforms_to;
         assert!(conforms_to.contains(&"https://api.stacspec.org/v1.0.0-rc.2/core".to_string()));
+        assert!(conforms_to
+            .contains(&"https://api.stacspec.org/v1.0.0-rc.2/ogcapi-features".to_string()));
+        assert!(
+            conforms_to.contains(&"https://api.stacspec.org/v1.0.0-rc.2/collections".to_string())
+        );
     }
 
     #[tokio::test]
