@@ -48,5 +48,5 @@ This hopefully will make it easy to, e.g., implement other backends, or use the 
 
 ## License
 
-**stac-rs** is dual-licensed under both the MIT license and the Apache license (Version 2.0).
+**stac-server-rs** is dual-licensed under both the MIT license and the Apache license (Version 2.0).
 See [LICENSE-APACHE](./LICENSE-APACHE) and [LICENSE-MIT](./LICENSE-MIT) for details.
