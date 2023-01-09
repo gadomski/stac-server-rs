@@ -40,8 +40,8 @@ If you need a **pgstac** database with a bunch of collections and items, may we 
 
 We tried our best to separate responsibilities, so there's a couple of crates in this repo that compose together to make the command-line server:
 
-- [stac-api](./stac-api/) defines API-specific structures and behaviors, e.g. backends, without doing any actual server work
-- [stac-server](./stac-server/) is the server itself
+- [stac-api](./stac-api/) defines API-specific structures and behaviors, e.g. backends and endpoints, without doing any actual server work
+- [stac-server](./stac-server/) is the server itself, implemented using [axum](https://github.com/tokio-rs/axum)
 - [stac-server-cli](./stac-server-cli/) wraps everything together into an executable
 
 This hopefully will make it easy to, e.g., implement other backends, or use the server api in a different application (e.g. as part of another service).
