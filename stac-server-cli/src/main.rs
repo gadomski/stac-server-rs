@@ -1,7 +1,6 @@
 use axum::Server;
 use clap::Parser;
-use stac_api::{MemoryBackend, PgstacBackend};
-use stac_server::Config;
+use stac_api::{Config, MemoryBackend, PgstacBackend};
 use std::{net::SocketAddr, path::PathBuf};
 use tokio_postgres::NoTls;
 

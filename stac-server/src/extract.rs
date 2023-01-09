@@ -14,10 +14,10 @@ impl<B: Backend> FromRequestParts<State<B>> for Hrefs {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Config, State};
+    use crate::State;
     use axum::{extract::FromRequestParts, http::Request};
-    use stac_api::Hrefs;
     use stac_api::MemoryBackend;
+    use stac_api::{Config, Hrefs};
 
     #[tokio::test]
     async fn hrefs_use_addr() {

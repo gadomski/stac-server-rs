@@ -1,4 +1,4 @@
-use crate::{Config, Result, State};
+use crate::{Result, State};
 use axum::{
     extract::{Path, State as AxumState},
     routing::get,
@@ -6,7 +6,7 @@ use axum::{
 };
 use stac_api::{
     endpoint::{Collection, Collections, Root},
-    Backend, Hrefs,
+    Backend, Config, Hrefs,
 };
 
 /// Returns the STAC API router.
@@ -14,8 +14,7 @@ use stac_api::{
 /// # Examples
 ///
 /// ```
-/// use stac_server::Config;
-/// use stac_api::MemoryBackend;
+/// use stac_api::{MemoryBackend, Config};
 ///
 /// # tokio_test::block_on(async {
 /// let config = Config::from_toml("data/config.toml").await.unwrap();
@@ -64,13 +63,12 @@ pub async fn collection<B: Backend>(
 
 #[cfg(test)]
 mod tests {
-    use crate::Config;
     use axum::{
         body::Body,
         http::{Request, StatusCode},
     };
     use stac::Collection;
-    use stac_api::{Backend, MemoryBackend};
+    use stac_api::{Backend, Config, MemoryBackend};
     use tower::ServiceExt;
 
     async fn test_config() -> Config {

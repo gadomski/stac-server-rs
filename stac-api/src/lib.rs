@@ -1,4 +1,5 @@
 mod backend;
+mod config;
 pub mod endpoint;
 mod error;
 mod hrefs;
@@ -7,6 +8,7 @@ mod hrefs;
 pub use backend::PgstacBackend;
 pub use {
     backend::{Backend, MemoryBackend},
+    config::{CatalogConfig, Config},
     error::Error,
     hrefs::Hrefs,
 };

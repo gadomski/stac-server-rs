@@ -1,7 +1,6 @@
 use anyhow::Result;
 use stac::Value;
-use stac_api::Backend;
-use stac_server::Config;
+use stac_api::{Backend, Config};
 
 pub async fn load_files_into_backend<B>(backend: &mut B, hrefs: &[String]) -> Result<()>
 where
