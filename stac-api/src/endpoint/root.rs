@@ -1,11 +1,9 @@
-use crate::{extract::Hrefs, Result, State};
-use axum::{extract, Json};
+use crate::{Backend, Hrefs, Result};
 use serde::Serialize;
 use stac::{Catalog, Link, Links};
-use stac_api::Backend;
 
 #[derive(Debug, Serialize)]
-pub struct LandingPage {
+pub struct Root {
     #[serde(flatten)]
     pub catalog: Catalog,
 
@@ -13,21 +11,22 @@ pub struct LandingPage {
     pub conforms_to: Vec<String>,
 }
 
-impl LandingPage {
-    async fn new(backend: impl Backend, mut catalog: Catalog, hrefs: Hrefs) -> Result<LandingPage> {
-        catalog.set_link(Link::root(hrefs.root()));
-        catalog.set_link(Link::self_(hrefs.root()));
-        catalog.set_link(Link::new(hrefs.href("api"), "service-desc"));
-        catalog.set_link(Link::new(hrefs.href("conformance"), "conformance"));
-        catalog.set_link(Link::new(hrefs.href("collections"), "data"));
+impl Root {
+    pub async fn new(backend: impl Backend, mut catalog: Catalog, hrefs: Hrefs) -> Result<Root> {
+        let root = hrefs.root()?;
+        catalog.set_link(Link::root(&root));
+        catalog.set_link(Link::self_(root));
+        catalog.set_link(Link::new(hrefs.href("api")?, "service-desc"));
+        catalog.set_link(Link::new(hrefs.href("conformance")?, "conformance"));
+        catalog.set_link(Link::new(hrefs.href("collections")?, "data"));
 
         for collection in backend.collections().await? {
             catalog
                 .links
-                .push(Link::child(hrefs.collection(&collection)).title(collection.title));
+                .push(Link::child(hrefs.collection(&collection)?).title(collection.title));
         }
 
-        Ok(LandingPage {
+        Ok(Root {
             catalog,
             conforms_to: vec![
                 "https://api.stacspec.org/v1.0.0-rc.2/core".to_string(),
@@ -38,28 +37,15 @@ impl LandingPage {
     }
 }
 
-pub async fn landing_page<B: Backend>(
-    extract::State(state): extract::State<State<B>>,
-    hrefs: Hrefs,
-) -> Json<LandingPage> {
-    // TODO handle error pages
-    Json(
-        LandingPage::new(state.backend, state.catalog, hrefs)
-            .await
-            .unwrap(),
-    )
-}
-
 #[cfg(test)]
 mod tests {
-    use super::LandingPage;
-    use crate::extract::Hrefs;
+    use super::Root;
+    use crate::{Backend, Hrefs, MemoryBackend};
     use stac::{Catalog, Collection, Links, Validate};
-    use stac_api::{Backend, MemoryBackend};
 
     #[tokio::test]
     async fn new_landing_page() {
-        let landing_page = LandingPage::new(
+        let landing_page = Root::new(
             MemoryBackend::new(),
             Catalog::new("an-id", "a description"),
             Hrefs::new(None),
@@ -102,7 +88,7 @@ mod tests {
             .add_collection(Collection::new("an-id", "a description"))
             .await
             .unwrap();
-        let landing_page = LandingPage::new(
+        let landing_page = Root::new(
             backend,
             Catalog::new("an-id", "a description"),
             Hrefs::new(None),

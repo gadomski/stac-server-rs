@@ -1,6 +1,13 @@
-use crate::{Config, State};
-use axum::{routing::get, Router};
-use stac_api::Backend;
+use crate::{Config, Result, State};
+use axum::{
+    extract::{Path, State as AxumState},
+    routing::get,
+    Json, Router,
+};
+use stac_api::{
+    endpoint::{Collection, Collections, Root},
+    Backend, Hrefs,
+};
 
 /// Returns the STAC API router.
 ///
@@ -12,16 +19,47 @@ use stac_api::Backend;
 ///
 /// # tokio_test::block_on(async {
 /// let config = Config::from_toml("data/config.toml").await.unwrap();
-/// let api = stac_server::api(MemoryBackend::new(), config);
+/// let api = stac_server::api(MemoryBackend::new(), config).unwrap();
 /// # })
 /// ```
-pub fn api<B: Backend + 'static>(backend: B, config: Config) -> Router {
-    let state = State::new(backend, config);
-    Router::new()
-        .route("/", get(crate::endpoint::landing_page))
-        .route("/collections", get(crate::endpoint::collections))
-        .route("/collections/:id", get(crate::endpoint::collection))
-        .with_state(state)
+pub fn api<B: Backend + 'static>(backend: B, config: Config) -> Result<Router> {
+    let state = State::new(backend, config)?;
+    Ok(Router::new()
+        .route("/", get(root))
+        .route("/collections", get(collections))
+        .route("/collections/:id", get(collection))
+        .with_state(state))
+}
+
+async fn root<B: Backend>(AxumState(state): AxumState<State<B>>, hrefs: Hrefs) -> Json<Root> {
+    // TODO handle error pages
+    Json(
+        Root::new(state.backend, state.catalog, hrefs)
+            .await
+            .unwrap(),
+    )
+}
+
+async fn collections<B: Backend>(
+    AxumState(state): AxumState<State<B>>,
+    hrefs: Hrefs,
+) -> Json<Collections> {
+    // TODO handle error pages
+    Json(Collections::new(state.backend, hrefs).await.unwrap())
+}
+
+pub async fn collection<B: Backend>(
+    AxumState(state): AxumState<State<B>>,
+    Path(id): Path<String>,
+    hrefs: Hrefs,
+) -> Json<Collection> {
+    // TODO handle error pages
+    Json(
+        Collection::new(state.backend, &id, hrefs)
+            .await
+            .unwrap()
+            .unwrap(),
+    )
 }
 
 #[cfg(test)]
@@ -41,7 +79,7 @@ mod tests {
 
     #[tokio::test]
     async fn landing_page() {
-        let api = super::api(MemoryBackend::new(), test_config().await);
+        let api = super::api(MemoryBackend::new(), test_config().await).unwrap();
         let response = api
             .oneshot(
                 Request::builder()
@@ -57,7 +95,7 @@ mod tests {
 
     #[tokio::test]
     async fn collections() {
-        let api = super::api(MemoryBackend::new(), test_config().await);
+        let api = super::api(MemoryBackend::new(), test_config().await).unwrap();
         let response = api
             .oneshot(
                 Request::builder()
@@ -78,7 +116,7 @@ mod tests {
             .add_collection(Collection::new("an-id", "a description"))
             .await
             .unwrap();
-        let api = super::api(backend, test_config().await);
+        let api = super::api(backend, test_config().await).unwrap();
         let response = api
             .oneshot(
                 Request::builder()

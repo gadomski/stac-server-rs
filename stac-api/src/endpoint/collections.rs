@@ -1,8 +1,6 @@
-use crate::{extract::Hrefs, Result, State};
-use axum::{extract, Json};
+use crate::{Backend, Hrefs, Result};
 use serde::Serialize;
 use stac::{Collection, Link, Links};
-use stac_api::Backend;
 
 #[derive(Debug, Serialize)]
 pub struct Collections {
@@ -11,11 +9,11 @@ pub struct Collections {
 }
 
 impl Collections {
-    async fn new(backend: impl Backend, hrefs: Hrefs) -> Result<Collections> {
+    pub async fn new(backend: impl Backend, hrefs: Hrefs) -> Result<Collections> {
         let collections = backend.collections().await.unwrap();
         let links = vec![
-            Link::root(hrefs.root()),
-            Link::self_(hrefs.href("collections")),
+            Link::root(hrefs.root()?),
+            Link::self_(hrefs.href("collections")?),
         ];
         Ok(Collections { collections, links })
     }
@@ -31,20 +29,11 @@ impl Links for Collections {
     }
 }
 
-pub async fn collections<B: Backend>(
-    extract::State(state): extract::State<State<B>>,
-    hrefs: Hrefs,
-) -> Json<Collections> {
-    // TODO handle error pages
-    Json(Collections::new(state.backend, hrefs).await.unwrap())
-}
-
 #[cfg(test)]
 mod tests {
     use super::Collections;
-    use crate::extract::Hrefs;
+    use crate::{Hrefs, MemoryBackend};
     use stac::Links;
-    use stac_api::MemoryBackend;
 
     #[tokio::test]
     async fn collections() {

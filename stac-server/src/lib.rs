@@ -5,7 +5,6 @@
 #![deny(missing_docs)]
 
 pub mod config;
-mod endpoint;
 mod error;
 mod extract;
 mod router;

@@ -12,9 +12,9 @@ serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.23", features = ["fs"] }
 toml = "0.5"
 thiserror = "1"
+url = "2.3"
 
 [dev-dependencies]
-stac = { version = "0.3", features = ["jsonschema"] }
 tokio = { version = "1.23", features = ["rt", "macros"]}
 tokio-test = { version = "0.4" }
 tower = "0.4"

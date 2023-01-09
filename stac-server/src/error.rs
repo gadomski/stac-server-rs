@@ -18,4 +18,8 @@ pub enum Error {
     /// toml::de::Error
     #[error(transparent)]
     TomlDe(#[from] toml::de::Error),
+
+    /// url::ParseError
+    #[error(transparent)]
+    UrlParse(#[from] url::ParseError),
 }

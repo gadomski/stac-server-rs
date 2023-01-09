@@ -54,13 +54,13 @@ async fn main() {
         stac_server_cli::load_files_into_backend(&mut backend, &cli.hrefs)
             .await
             .unwrap();
-        stac_server::api(backend, config)
+        stac_server::api(backend, config).unwrap()
     } else {
         let mut backend = MemoryBackend::new();
         stac_server_cli::load_files_into_backend(&mut backend, &cli.hrefs)
             .await
             .unwrap();
-        stac_server::api(backend, config)
+        stac_server::api(backend, config).unwrap()
     };
     println!("Serving on http://{}", addr);
     Server::bind(&addr)
