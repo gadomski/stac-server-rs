@@ -37,7 +37,7 @@ impl Config {
     /// # Examples
     ///
     /// ```
-    /// use stac_api::Config;
+    /// use stac_server::Config;
     /// # tokio_test::block_on(async {
     /// let config = Config::from_toml("data/config.toml").await.unwrap();
     /// # })

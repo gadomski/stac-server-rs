@@ -1,20 +1,20 @@
-use crate::{Result, State};
+use crate::{Config, Result, State};
 use axum::{
     extract::{Path, State as AxumState},
     routing::get,
     Json, Router,
 };
-use stac_api::{
-    endpoint::{Collection, Collections, Root},
-    Backend, Config, Hrefs,
-};
+use stac::Collection;
+use stac_api::{Collections, LinkBuilder, Root};
+use stac_backend::Backend;
 
 /// Returns the STAC API router.
 ///
 /// # Examples
 ///
 /// ```
-/// use stac_api::{MemoryBackend, Config};
+/// use stac_backend::MemoryBackend;
+/// use stac_server::Config;
 ///
 /// # tokio_test::block_on(async {
 /// let config = Config::from_toml("data/config.toml").await.unwrap();
@@ -30,10 +30,15 @@ pub fn api<B: Backend + 'static>(backend: B, config: Config) -> Result<Router> {
         .with_state(state))
 }
 
-async fn root<B: Backend>(AxumState(state): AxumState<State<B>>, hrefs: Hrefs) -> Json<Root> {
+async fn root<B: Backend>(
+    AxumState(state): AxumState<State<B>>,
+    link_builder: LinkBuilder,
+) -> Json<Root> {
     // TODO handle error pages
     Json(
-        Root::new(state.backend, state.catalog, hrefs)
+        state
+            .backend
+            .root_endpoint(link_builder, state.catalog)
             .await
             .unwrap(),
     )
@@ -41,20 +46,28 @@ async fn root<B: Backend>(AxumState(state): AxumState<State<B>>, hrefs: Hrefs) -
 
 async fn collections<B: Backend>(
     AxumState(state): AxumState<State<B>>,
-    hrefs: Hrefs,
+    link_builder: LinkBuilder,
 ) -> Json<Collections> {
     // TODO handle error pages
-    Json(Collections::new(state.backend, hrefs).await.unwrap())
+    Json(
+        state
+            .backend
+            .collections_endpoint(link_builder)
+            .await
+            .unwrap(),
+    )
 }
 
 pub async fn collection<B: Backend>(
     AxumState(state): AxumState<State<B>>,
+    link_builder: LinkBuilder,
     Path(id): Path<String>,
-    hrefs: Hrefs,
 ) -> Json<Collection> {
     // TODO handle error pages
     Json(
-        Collection::new(state.backend, &id, hrefs)
+        state
+            .backend
+            .collection_endpoint(link_builder, &id)
             .await
             .unwrap()
             .unwrap(),
@@ -63,12 +76,13 @@ pub async fn collection<B: Backend>(
 
 #[cfg(test)]
 mod tests {
+    use crate::Config;
     use axum::{
         body::Body,
         http::{Request, StatusCode},
     };
     use stac::Collection;
-    use stac_api::{Backend, Config, MemoryBackend};
+    use stac_backend::{Backend, MemoryBackend};
     use tower::ServiceExt;
 
     async fn test_config() -> Config {

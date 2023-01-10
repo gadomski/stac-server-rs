@@ -1,0 +1,22 @@
+[package]
+name = "stac-backend"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1"
+bb8 = { version = "0.8", optional = true }
+bb8-postgres = { version = "0.8", optional = true }
+pgstac = { version = "0.0.3", optional = true, git = "https://github.com/gadomski/pgstac-rs" }
+stac = "0.3"
+stac-api = { version = "0.0.1", path = "../stac-api" }
+thiserror = "1"
+tokio-postgres = { version = "0.7", optional = true }
+
+[dev-dependencies]
+stac = { version = "0.3", features = ["jsonschema"] }
+tokio = { version = "1.24", features = ["rt", "macros"] }
+
+[features]
+memory = []
+pgstac = ["dep:pgstac", "dep:bb8", "dep:bb8-postgres", "dep:tokio-postgres"]

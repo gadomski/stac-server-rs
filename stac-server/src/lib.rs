@@ -4,12 +4,18 @@
 
 #![deny(missing_docs)]
 
+mod config;
 mod error;
 mod extract;
 mod router;
 mod state;
 
-pub use {error::Error, router::api, state::State};
+pub use {
+    config::{CatalogConfig, Config},
+    error::Error,
+    router::api,
+    state::State,
+};
 
 /// Crate-specific result type.
 pub type Result<T> = std::result::Result<T, Error>;

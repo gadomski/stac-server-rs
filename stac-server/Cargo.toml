@@ -7,11 +7,15 @@ edition = "2021"
 axum = "0.6"
 stac = "0.3"
 stac-api = { version = "0.0.1", path = "../stac-api" }
+stac-backend = { version = "0.0.1", path = "../stac-backend" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"
+toml = "0.5"
+tokio = { version = "1.23", features = ["fs", "io-util"] }
 url = "2.3"
 
 [dev-dependencies]
+stac-backend = { version = "0.0.1", path = "../stac-backend", features = ["memory"] }
 tokio = { version = "1.23", features = ["rt", "macros"]}
 tokio-test = { version = "0.4" }
 tower = "0.4"

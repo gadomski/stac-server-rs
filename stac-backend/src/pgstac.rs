@@ -1,4 +1,4 @@
-use crate::{Backend, Error, Result};
+use crate::{Backend, Result};
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
@@ -25,13 +25,13 @@ impl Backend for PgstacBackend {
     async fn collections(&self) -> Result<Vec<Collection>> {
         let connection = self.pool.get().await?;
         let client = Client::new(&*connection);
-        client.collections().await.map_err(Error::from)
+        client.collections().await.map_err(Box::from)
     }
 
     async fn collection(&self, id: &str) -> Result<Option<Collection>> {
         let connection = self.pool.get().await?;
         let client = Client::new(&*connection);
-        client.collection(id).await.map_err(Error::from)
+        client.collection(id).await.map_err(Box::from)
     }
 
     async fn add_collection(&mut self, _: Collection) -> Result<Option<Collection>> {

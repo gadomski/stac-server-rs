@@ -18,7 +18,7 @@ impl MemoryBackend {
     /// # Examples
     ///
     /// ```
-    /// use stac_api::MemoryBackend;
+    /// use stac_backend::MemoryBackend;
     /// let backend = MemoryBackend::new();
     /// ```
     pub fn new() -> MemoryBackend {
@@ -43,5 +43,31 @@ impl Backend for MemoryBackend {
     async fn add_collection(&mut self, collection: Collection) -> Result<Option<Collection>> {
         let mut collections = self.collections.write().unwrap();
         Ok(collections.insert(collection.id.clone(), collection))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MemoryBackend;
+    use crate::Backend;
+    use stac::{Catalog, Validate};
+    use stac_api::LinkBuilder;
+
+    fn link_builder() -> LinkBuilder {
+        LinkBuilder::new(None)
+    }
+
+    fn catalog() -> Catalog {
+        Catalog::new("an-id", "a description")
+    }
+
+    #[tokio::test]
+    async fn root_endpoint() {
+        let backend = MemoryBackend::new();
+        let root = backend
+            .root_endpoint(link_builder(), catalog())
+            .await
+            .unwrap();
+        root.catalog.validate().unwrap();
     }
 }

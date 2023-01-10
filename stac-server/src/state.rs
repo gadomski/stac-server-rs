@@ -1,6 +1,6 @@
-use crate::Result;
+use crate::{Config, Result};
 use stac::Catalog;
-use stac_api::{Backend, Config};
+use stac_backend::Backend;
 use url::Url;
 
 /// Shared state for the API.
