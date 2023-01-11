@@ -35,5 +35,80 @@ pub trait Backend: Send + Sync + Clone {
     async fn collection(&self, id: &str) -> Result<Option<Collection>>;
 
     /// Adds a collection to the backend.
-    async fn add_collection(&mut self, collection: Collection) -> Result<Option<Collection>>;
+    async fn add_collection(&mut self, collection: Collection) -> Result<()>;
+}
+
+#[cfg(all(test, any(feature = "pgstac", feature = "memory")))]
+pub(crate) mod tests {
+    macro_rules! test_suite {
+        ($backend:ty, $body:expr) => {
+            use crate::Backend;
+            use stac::{Catalog, Collection, Validate};
+            use stac_api::LinkBuilder;
+
+            async fn backend() -> $backend {
+                $body
+            }
+
+            fn link_builder() -> LinkBuilder {
+                LinkBuilder::new(None)
+            }
+
+            fn catalog() -> Catalog {
+                Catalog::new("a-catalog", "a description")
+            }
+
+            fn collection() -> Collection {
+                Collection::new("a-collection", "a description")
+            }
+
+            #[tokio::test]
+            async fn root_endpoint() {
+                let backend = backend().await;
+                let root = backend
+                    .root_endpoint(link_builder(), catalog())
+                    .await
+                    .unwrap();
+                root.catalog.validate().unwrap();
+            }
+
+            #[tokio::test]
+            async fn collections_endpoint_with_none() {
+                let backend = backend().await;
+                let collections = backend.collections_endpoint(link_builder()).await.unwrap();
+                assert!(collections.collections.is_empty());
+            }
+
+            #[tokio::test]
+            async fn collections_endpoint_with_one() {
+                let mut backend = backend().await;
+                backend.add_collection(collection()).await.unwrap();
+                let collections = backend.collections_endpoint(link_builder()).await.unwrap();
+                assert_eq!(collections.collections.len(), 1);
+            }
+
+            #[tokio::test]
+            async fn collection_endpoint_with_none() {
+                let backend = backend().await;
+                let collection = backend
+                    .collection_endpoint(link_builder(), "a-collection")
+                    .await
+                    .unwrap();
+                assert!(collection.is_none());
+            }
+
+            #[tokio::test]
+            async fn collection_endpoint_with_one() {
+                let mut backend = backend().await;
+                backend.add_collection(collection()).await.unwrap();
+                let collection = backend
+                    .collection_endpoint(link_builder(), "a-collection")
+                    .await
+                    .unwrap();
+                assert!(collection.is_some());
+            }
+        };
+    }
+
+    pub(crate) use test_suite;
 }

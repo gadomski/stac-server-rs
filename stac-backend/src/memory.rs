@@ -40,52 +40,17 @@ impl Backend for MemoryBackend {
         Ok(collections.get(id).cloned())
     }
 
-    async fn add_collection(&mut self, collection: Collection) -> Result<Option<Collection>> {
+    async fn add_collection(&mut self, collection: Collection) -> Result<()> {
         let mut collections = self.collections.write().unwrap();
-        Ok(collections.insert(collection.id.clone(), collection))
+        let _ = collections.insert(collection.id.clone(), collection);
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::MemoryBackend;
-    use crate::Backend;
-    use stac::{Catalog, Collection, Validate};
-    use stac_api::LinkBuilder;
+    use crate::backend::tests::test_suite;
 
-    fn link_builder() -> LinkBuilder {
-        LinkBuilder::new(None)
-    }
-
-    fn catalog() -> Catalog {
-        Catalog::new("an-id", "a description")
-    }
-
-    #[tokio::test]
-    async fn root_endpoint() {
-        let backend = MemoryBackend::new();
-        let root = backend
-            .root_endpoint(link_builder(), catalog())
-            .await
-            .unwrap();
-        root.catalog.validate().unwrap();
-    }
-
-    #[tokio::test]
-    async fn collections_endpoint_empty() {
-        let backend = MemoryBackend::new();
-        let collections = backend.collections_endpoint(link_builder()).await.unwrap();
-        assert!(collections.collections.is_empty());
-    }
-
-    #[tokio::test]
-    async fn collections_endpoint_with_one() {
-        let mut backend = MemoryBackend::new();
-        backend
-            .add_collection(Collection::new("an-id", "a description"))
-            .await
-            .unwrap();
-        let collections = backend.collections_endpoint(link_builder()).await.unwrap();
-        assert_eq!(collections.collections.len(), 1);
-    }
+    test_suite!(MemoryBackend, MemoryBackend::new());
 }

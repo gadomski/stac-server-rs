@@ -34,7 +34,9 @@ impl Backend for PgstacBackend {
         client.collection(id).await.map_err(Box::from)
     }
 
-    async fn add_collection(&mut self, _: Collection) -> Result<Option<Collection>> {
-        unimplemented!()
+    async fn add_collection(&mut self, collection: Collection) -> Result<()> {
+        let connection = self.pool.get().await?;
+        let client = Client::new(&*connection);
+        client.add_collection(collection).await.map_err(Box::from)
     }
 }
