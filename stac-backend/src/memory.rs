@@ -50,7 +50,7 @@ impl Backend for MemoryBackend {
 mod tests {
     use super::MemoryBackend;
     use crate::Backend;
-    use stac::{Catalog, Validate};
+    use stac::{Catalog, Collection, Validate};
     use stac_api::LinkBuilder;
 
     fn link_builder() -> LinkBuilder {
@@ -69,5 +69,23 @@ mod tests {
             .await
             .unwrap();
         root.catalog.validate().unwrap();
+    }
+
+    #[tokio::test]
+    async fn collections_endpoint_empty() {
+        let backend = MemoryBackend::new();
+        let collections = backend.collections_endpoint(link_builder()).await.unwrap();
+        assert!(collections.collections.is_empty());
+    }
+
+    #[tokio::test]
+    async fn collections_endpoint_with_one() {
+        let mut backend = MemoryBackend::new();
+        backend
+            .add_collection(Collection::new("an-id", "a description"))
+            .await
+            .unwrap();
+        let collections = backend.collections_endpoint(link_builder()).await.unwrap();
+        assert_eq!(collections.collections.len(), 1);
     }
 }
