@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use stac::{Catalog, Collection, Link};
+use stac::{media_type, Catalog, Collection, Link};
 use thiserror::Error;
 use url::Url;
 
@@ -172,9 +172,41 @@ impl LinkBuilder {
         Link::root(self.0.as_str())
     }
 
+    pub fn collection_parent(&self) -> Link {
+        Link::parent(self.0.as_str())
+    }
+
+    pub fn collection_self(&self, collection: &Collection) -> Result<Link> {
+        Ok(Link::self_(
+            self.0.join(&format!("/collections/{}", collection.id))?,
+        ))
+    }
+
+    pub fn items(&self, collection: &Collection) -> Result<Link> {
+        let mut link = Link::new(
+            self.0
+                .join(&format!("/collections/{}/items", collection.id))?,
+            "items",
+        );
+        link.r#type = Some(media_type::GEOJSON.to_string());
+        Ok(link)
+    }
+
     pub fn child_collection(&self, collection: &Collection) -> Result<Link> {
         Ok(Link::child(
             self.0.join(&format!("/collections/{}", collection.id))?,
         ))
+    }
+
+    pub fn next_items(&self, id: &str) -> Result<Link> {
+        let mut link = Link::new(self.0.join(&format!("/collections/{}/items", id))?, "next");
+        link.r#type = Some(media_type::GEOJSON.to_string());
+        Ok(link)
+    }
+
+    pub fn prev_items(&self, id: &str) -> Result<Link> {
+        let mut link = Link::new(self.0.join(&format!("/collections/{}/items", id))?, "prev");
+        link.r#type = Some(media_type::GEOJSON.to_string());
+        Ok(link)
     }
 }

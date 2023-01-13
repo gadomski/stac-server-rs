@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use stac::{Catalog, Collection, Item};
 use stac_api::{Collections, ItemCollection, LinkBuilder, Root};
-use url::Url;
 
 /// A STAC API backend builds each STAC API endpoint.
 #[async_trait]
@@ -34,18 +33,31 @@ pub trait Backend: Send + Sync + Clone {
         })
     }
 
-    async fn collection_endpoint(&self, _: LinkBuilder, id: &str) -> Result<Option<Collection>> {
-        self.collection(id).await
+    async fn collection_endpoint(
+        &self,
+        link_builder: LinkBuilder,
+        id: &str,
+    ) -> Result<Option<Collection>> {
+        if let Some(mut collection) = self.collection(id).await? {
+            collection.links.push(link_builder.root());
+            collection.links.push(link_builder.collection_parent());
+            collection
+                .links
+                .push(link_builder.collection_self(&collection)?);
+            collection.links.push(link_builder.items(&collection)?);
+            Ok(Some(collection))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn items_endpoint(
         &self,
-        _: LinkBuilder,
+        link_builder: LinkBuilder,
         id: &str,
         query: Self::Query,
-        url: Url,
     ) -> Result<ItemCollection> {
-        self.items(id, query, url).await
+        self.items(link_builder, id, query).await
     }
 
     async fn item_endpoint(
@@ -64,7 +76,12 @@ pub trait Backend: Send + Sync + Clone {
     async fn collection(&self, id: &str) -> Result<Option<Collection>>;
 
     /// Returns items.
-    async fn items(&self, id: &str, query: Self::Query, url: Url) -> Result<ItemCollection>;
+    async fn items(
+        &self,
+        link_builder: LinkBuilder,
+        id: &str,
+        query: Self::Query,
+    ) -> Result<ItemCollection>;
 
     /// Returns an item.
     async fn item(&self, collection_id: &str, item_id: &str) -> Result<Option<Item>>;
@@ -167,8 +184,33 @@ pub(crate) mod tests {
                 let collection = backend
                     .collection_endpoint(link_builder(), "a-collection")
                     .await
+                    .unwrap()
                     .unwrap();
-                assert!(collection.is_some());
+
+                let root_link = collection.root_link().expect("root link");
+                assert_eq!(root_link.href, "http://stac-backend.test/");
+                assert_eq!(root_link.r#type.as_ref().unwrap(), media_type::JSON);
+
+                let parent_link = collection.parent_link().expect("parent link");
+                assert_eq!(parent_link.href, "http://stac-backend.test/");
+                assert_eq!(parent_link.r#type.as_ref().unwrap(), media_type::JSON);
+
+                let self_link = collection.self_link().expect("self link");
+                assert_eq!(
+                    self_link.href,
+                    "http://stac-backend.test/collections/a-collection"
+                );
+                assert_eq!(
+                    self_link.r#type.as_ref().expect("self link media type"),
+                    media_type::JSON
+                );
+
+                let items_link = collection.link("items").unwrap();
+                assert_eq!(
+                    items_link.href,
+                    "http://stac-backend.test/collections/a-collection/items"
+                );
+                assert_eq!(items_link.r#type.as_ref().unwrap(), media_type::GEOJSON);
             }
 
             #[tokio::test]

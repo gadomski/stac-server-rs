@@ -1,12 +1,11 @@
 use crate::{Backend, CollectionDoesNotExist, NoCollection, Result};
 use async_trait::async_trait;
 use stac::{Collection, Item};
-use stac_api::ItemCollection;
+use stac_api::{ItemCollection, LinkBuilder};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
-use url::Url;
 
 /// An in-memory backend, mostly for testing.
 #[derive(Clone, Debug)]
@@ -52,7 +51,7 @@ impl Backend for MemoryBackend {
         Ok(())
     }
 
-    async fn items(&self, id: &str, _: Self::Query, _: Url) -> Result<ItemCollection> {
+    async fn items(&self, _: LinkBuilder, id: &str, _: Self::Query) -> Result<ItemCollection> {
         let items = self.items.read().unwrap();
         if let Some(collection) = items.get(id) {
             let mut items = Vec::new();

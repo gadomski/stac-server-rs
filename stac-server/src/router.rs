@@ -1,6 +1,6 @@
 use crate::{Config, Result, State};
 use axum::{
-    extract::{OriginalUri, Path, Query, State as AxumState},
+    extract::{Path, Query, State as AxumState},
     routing::get,
     Json, Router,
 };
@@ -81,14 +81,12 @@ pub async fn items<B: Backend>(
     link_builder: LinkBuilder,
     Path(id): Path<String>,
     Query(query): Query<B::Query>,
-    OriginalUri(uri): OriginalUri,
 ) -> Json<ItemCollection> {
     // TODO handle error pages
-    let url = uri.to_string().parse().unwrap();
     Json(
         state
             .backend
-            .items_endpoint(link_builder, &id, query, url)
+            .items_endpoint(link_builder, &id, query)
             .await
             .unwrap(),
     )

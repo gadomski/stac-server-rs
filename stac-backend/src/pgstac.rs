@@ -1,13 +1,14 @@
+use std::num::TryFromIntError;
+
 use crate::{Backend, Result};
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use pgstac::{Client, Page, Search};
 use serde::Deserialize;
-use stac::{media_type, Collection, Item, Link};
-use stac_api::{Item as ApiItem, ItemCollection};
+use stac::{Collection, Item, Link};
+use stac_api::{Item as ApiItem, ItemCollection, LinkBuilder};
 use tokio_postgres::tls::NoTls;
-use url::Url;
 
 const TOKEN_KEY: &str = "token";
 
@@ -19,6 +20,7 @@ pub struct PgstacBackend {
 
 #[derive(Deserialize, Debug)]
 pub struct Query {
+    pub limit: Option<u64>,
     pub token: Option<String>,
 }
 
@@ -52,16 +54,22 @@ impl Backend for PgstacBackend {
         client.add_collection(collection).await.map_err(Box::from)
     }
 
-    async fn items(&self, id: &str, query: Query, url: Url) -> Result<ItemCollection> {
+    async fn items(
+        &self,
+        link_builder: LinkBuilder,
+        id: &str,
+        query: Query,
+    ) -> Result<ItemCollection> {
         let connection = self.pool.get().await?;
         let client = Client::new(&*connection);
-        let search = Search {
-            collections: vec![id.to_string()],
-            token: query.token,
-            ..Default::default()
-        };
+        let mut search = query.into_search()?;
+        search.collections = vec![id.to_string()];
         let page = client.search(search).await?;
-        item_collection(page, url)
+        item_collection(
+            page,
+            link_builder.next_items(id)?,
+            link_builder.prev_items(id)?,
+        )
     }
 
     async fn item(&self, collection_id: &str, item_id: &str) -> Result<Option<Item>> {
@@ -77,18 +85,32 @@ impl Backend for PgstacBackend {
     }
 }
 
-fn item_collection(page: Page, url: Url) -> Result<ItemCollection> {
+impl Query {
+    fn into_search(self) -> std::result::Result<Search, TryFromIntError> {
+        let limit = if let Some(limit) = self.limit {
+            Some(limit.try_into()?)
+        } else {
+            None
+        };
+        Ok(Search {
+            token: self.token,
+            limit: limit,
+            ..Default::default()
+        })
+    }
+}
+
+fn item_collection(page: Page, mut next_link: Link, mut prev_link: Link) -> Result<ItemCollection> {
+    // TODO can we avoid making the next link if we don't need it?
     // TODO once stac-api is released, we can move this into pgstac
     let mut links = Vec::with_capacity(2);
     if let Some(next) = page.next_token() {
-        let mut link = Link::new(set_token(&url, &next), "next");
-        link.r#type = Some(media_type::GEOJSON.to_string());
-        links.push(link);
+        next_link.set_query_pair(TOKEN_KEY, &next)?;
+        links.push(next_link);
     }
     if let Some(prev) = page.prev_token() {
-        let mut link = Link::new(set_token(&url, &prev), "prev");
-        link.r#type = Some(media_type::GEOJSON.to_string());
-        links.push(link);
+        prev_link.set_query_pair(TOKEN_KEY, &prev)?;
+        links.push(prev_link);
     }
     let number_matched = if let Some(matched) = page.context.matched {
         Some(matched.try_into()?)
@@ -111,14 +133,4 @@ fn item_collection(page: Page, url: Url) -> Result<ItemCollection> {
         number_matched: number_matched,
         number_returned: number_returned,
     })
-}
-
-fn set_token(url: &Url, value: &str) -> Url {
-    let mut new_url = url.clone();
-    new_url
-        .query_pairs_mut()
-        .clear()
-        .extend_pairs(url.query_pairs().filter(|(key, _)| key != TOKEN_KEY))
-        .append_pair(TOKEN_KEY, value);
-    new_url
 }
