@@ -38,18 +38,14 @@ async fn main() {
     } else {
         stac_server_cli::default_config()
     };
-    let addr = if let Some(addr) = &cli.addr {
-        config.addr = Some(addr.to_string());
-        addr
-    } else if let Some(addr) = &config.addr {
-        addr
-    } else {
-        panic!("addr must be provided on the command line or in the config");
-    };
-    let addr = addr.parse::<SocketAddr>().unwrap();
+    if let Some(addr) = &cli.addr {
+        config.addr = addr.to_string();
+    }
+    let addr = config.addr.parse::<SocketAddr>().unwrap();
     let router = if let Some(pgstac) = cli.pgstac {
         // Test the connection to blow it up early.
         let _ = tokio_postgres::connect(&pgstac, NoTls).await.unwrap();
+        println!("Connected to pgstac at {}", pgstac);
         let mut backend = PgstacBackend::from_str(&pgstac).await.unwrap();
         stac_server_cli::load_files_into_backend(&mut backend, &cli.hrefs).await;
         stac_server::api(backend, config).unwrap()

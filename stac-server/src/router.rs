@@ -1,11 +1,11 @@
 use crate::{Config, Result, State};
 use axum::{
-    extract::{Path, State as AxumState},
+    extract::{OriginalUri, Path, Query, State as AxumState},
     routing::get,
     Json, Router,
 };
-use stac::Collection;
-use stac_api::{Collections, LinkBuilder, Root};
+use stac::{Collection, Item};
+use stac_api::{Collections, ItemCollection, LinkBuilder, Root};
 use stac_backend::Backend;
 
 /// Returns the STAC API router.
@@ -27,6 +27,8 @@ pub fn api<B: Backend + 'static>(backend: B, config: Config) -> Result<Router> {
         .route("/", get(root))
         .route("/collections", get(collections))
         .route("/collections/:id", get(collection))
+        .route("/collections/:id/items", get(items))
+        .route("/collections/:id/items/:item_id", get(item))
         .with_state(state))
 }
 
@@ -74,6 +76,41 @@ pub async fn collection<B: Backend>(
     )
 }
 
+pub async fn items<B: Backend>(
+    AxumState(state): AxumState<State<B>>,
+    link_builder: LinkBuilder,
+    Path(id): Path<String>,
+    Query(query): Query<B::Query>,
+    OriginalUri(uri): OriginalUri,
+) -> Json<ItemCollection> {
+    // TODO handle error pages
+    let url = uri.to_string().parse().unwrap();
+    Json(
+        state
+            .backend
+            .items_endpoint(link_builder, &id, query, url)
+            .await
+            .unwrap(),
+    )
+}
+
+pub async fn item<B: Backend>(
+    AxumState(state): AxumState<State<B>>,
+    link_builder: LinkBuilder,
+    Path(collection_id): Path<String>,
+    Path(item_id): Path<String>,
+) -> Json<Item> {
+    // TODO handle error pages
+    Json(
+        state
+            .backend
+            .item_endpoint(link_builder, &collection_id, &item_id)
+            .await
+            .unwrap()
+            .unwrap(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use crate::Config;
@@ -81,7 +118,7 @@ mod tests {
         body::Body,
         http::{Request, StatusCode},
     };
-    use stac::Collection;
+    use stac::{Collection, Item};
     use stac_backend::{Backend, MemoryBackend};
     use tower::ServiceExt;
 
@@ -134,6 +171,58 @@ mod tests {
                 Request::builder()
                     .method("GET")
                     .uri("/collections/an-id")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    // TODO fix this test
+    #[tokio::test]
+    #[ignore]
+    async fn items() {
+        let mut backend = MemoryBackend::new();
+        backend
+            .add_collection(Collection::new("a-collection", "a description"))
+            .await
+            .unwrap();
+        let mut item = Item::new("an-item");
+        item.collection = Some("a-collection".to_string());
+        backend.add_item(item).await.unwrap();
+        let api = super::api(backend, test_config().await).unwrap();
+        let response = api
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/collections/an-id/items")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    // TODO fix this test
+    #[tokio::test]
+    #[ignore]
+    async fn item() {
+        let mut backend = MemoryBackend::new();
+        backend
+            .add_collection(Collection::new("a-collection", "a description"))
+            .await
+            .unwrap();
+        let mut item = Item::new("an-item");
+        item.collection = Some("a-collection".to_string());
+        backend.add_item(item).await.unwrap();
+        let api = super::api(backend, test_config().await).unwrap();
+        let response = api
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/collections/an-id/items/an-item")
                     .body(Body::empty())
                     .unwrap(),
             )

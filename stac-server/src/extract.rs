@@ -25,9 +25,8 @@ mod tests {
 
     #[tokio::test]
     async fn hrefs_use_addr() {
-        let addr = "stac-server-rs.test:7822";
         let mut config = Config::from_toml("../data/config.toml").await.unwrap();
-        config.addr = Some(addr.to_string());
+        config.addr = "stac-server-rs.test:7822".to_string();
         let state = State::new(MemoryBackend::new(), config).unwrap();
         let (mut parts, _) = Request::builder().body(()).unwrap().into_parts();
         let link_builder = LinkBuilder::from_request_parts(&mut parts, &state)

@@ -14,8 +14,9 @@ use tokio::{
 pub struct Config {
     /// The address to serve the application from.
     ///
-    /// If not provided, this is assumed to be set elsewhere, e.g. via a command line interface.
-    pub addr: Option<String>,
+    /// Defaults to `localhost:7822`.
+    #[serde(default = "default_addr")]
+    pub addr: String,
 
     /// Configure the landing page's attributes.
     pub catalog: CatalogConfig,
@@ -62,4 +63,8 @@ impl CatalogConfig {
     pub fn into_catalog(self) -> Catalog {
         Catalog::new(self.id, self.description)
     }
+}
+
+fn default_addr() -> String {
+    "localhost:7822".to_string()
 }
