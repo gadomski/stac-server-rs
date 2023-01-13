@@ -16,7 +16,13 @@ pub enum Error {
     /// [std::num::TryFromIntError]
     #[error(transparent)]
     TryFromInt(#[from] std::num::TryFromIntError),
+
+    /// [url::ParseError]
+    #[error(transparent)]
+    UrlParse(#[from] url::ParseError),
 }
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// The root landing page of a STAC API.
 ///
@@ -111,7 +117,7 @@ impl ItemCollection {
     /// # Examples
     ///
     /// TODO
-    pub fn new(items: Vec<Item>) -> Result<ItemCollection, Error> {
+    pub fn new(items: Vec<Item>) -> Result<ItemCollection> {
         let number_returned = items.len();
         Ok(ItemCollection {
             r#type: ITEM_COLLECTION_TYPE.to_string(),
@@ -126,7 +132,7 @@ impl ItemCollection {
 impl TryFrom<stac::Item> for Item {
     type Error = serde_json::Error;
 
-    fn try_from(item: stac::Item) -> Result<Item, serde_json::Error> {
+    fn try_from(item: stac::Item) -> std::result::Result<Item, serde_json::Error> {
         match serde_json::to_value(item)? {
             Value::Object(object) => Ok(Item(object)),
             _ => panic!("a STAC item shouldn't be able to deserialize to anything but an object"),
@@ -164,5 +170,11 @@ impl LinkBuilder {
     /// ```
     pub fn root(&self) -> Link {
         Link::root(self.0.as_str())
+    }
+
+    pub fn child_collection(&self, collection: &Collection) -> Result<Link> {
+        Ok(Link::child(
+            self.0.join(&format!("/collections/{}", collection.id))?,
+        ))
     }
 }

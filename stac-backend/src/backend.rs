@@ -14,7 +14,13 @@ pub trait Backend: Send + Sync + Clone {
     ///
     /// The [Backend] trait provides a default implementation, but backends can
     /// override or extend that implementation as they want.
-    async fn root_endpoint(&self, _: LinkBuilder, catalog: Catalog) -> Result<Root> {
+    async fn root_endpoint(&self, link_builder: LinkBuilder, mut catalog: Catalog) -> Result<Root> {
+        let collections = self.collections().await?;
+        let mut links = Vec::with_capacity(collections.len());
+        for collection in collections {
+            links.push(link_builder.child_collection(&collection)?);
+        }
+        catalog.links = links;
         Ok(Root {
             catalog,
             conforms_to: Vec::new(),
@@ -75,7 +81,7 @@ pub(crate) mod tests {
     macro_rules! test_suite {
         ($backend:ty, $body:expr) => {
             use crate::Backend;
-            use stac::{Catalog, Collection, Item, Validate};
+            use stac::{media_type, Catalog, Collection, Item, Links, Validate};
             use stac_api::LinkBuilder;
 
             async fn backend() -> $backend {
@@ -83,7 +89,7 @@ pub(crate) mod tests {
             }
 
             fn link_builder() -> LinkBuilder {
-                LinkBuilder::new("http://stac-server-rs.test".parse().unwrap())
+                LinkBuilder::new("http://stac-backend.test".parse().unwrap())
             }
 
             fn catalog() -> Catalog {
@@ -108,6 +114,25 @@ pub(crate) mod tests {
                     .await
                     .unwrap();
                 root.catalog.validate().unwrap();
+            }
+
+            #[tokio::test]
+            async fn root_endpoint_with_collections() {
+                let mut backend = backend().await;
+                backend.add_collection(collection()).await.unwrap();
+                let root = backend
+                    .root_endpoint(link_builder(), catalog())
+                    .await
+                    .unwrap();
+                let catalog = root.catalog;
+                let child_links: Vec<_> = catalog.iter_child_links().collect();
+                assert_eq!(child_links.len(), 1);
+                let child_link = child_links[0];
+                assert_eq!(
+                    child_link.href,
+                    "http://stac-backend.test/collections/a-collection"
+                );
+                assert_eq!(child_link.r#type.as_ref().unwrap(), media_type::JSON);
             }
 
             #[tokio::test]
