@@ -1,6 +1,5 @@
 use thiserror::Error;
 
-/// Crate-specific error enum.
 #[derive(Debug, Error)]
 pub enum Error {
     /// [std::io::Error]

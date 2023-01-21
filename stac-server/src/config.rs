@@ -9,40 +9,22 @@ use tokio::{
     io::{AsyncReadExt, BufReader},
 };
 
-/// stac-server-rs configuration.
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    /// The address to serve the application from.
-    ///
-    /// Defaults to `localhost:7822`.
     #[serde(default = "default_addr")]
     pub addr: String,
 
-    /// Configure the landing page's attributes.
     pub catalog: CatalogConfig,
 }
 
-/// The landing page's attributes.
 #[derive(Debug, Deserialize)]
 pub struct CatalogConfig {
-    /// The catalog id.
     pub id: String,
 
-    /// The catalog description.
     pub description: String,
 }
 
 impl Config {
-    /// Reads in configuration from a toml file.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use stac_server::Config;
-    /// # tokio_test::block_on(async {
-    /// let config = Config::from_toml("data/config.toml").await.unwrap();
-    /// # })
-    /// ```
     pub async fn from_toml(path: impl AsRef<Path>) -> Result<Config> {
         let mut reader = File::open(path).await.map(BufReader::new)?;
         let mut string = String::new();
@@ -59,7 +41,6 @@ impl FromStr for Config {
 }
 
 impl CatalogConfig {
-    /// Converts this catalog config into a catalog.
     pub fn into_catalog(self) -> Catalog {
         Catalog::new(self.id, self.description)
     }

@@ -1,7 +1,6 @@
 [workspace]
 members = [
-    "stac-api",
-    "stac-backend",
+    "stac-api-backend",
     "stac-server",
     "stac-server-cli"
 ]

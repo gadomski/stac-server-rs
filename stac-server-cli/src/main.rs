@@ -1,9 +1,8 @@
 use axum::Server;
 use clap::Parser;
-use stac_backend::{MemoryBackend, PgstacBackend};
+use stac_api_backend::MemoryBackend;
 use stac_server::Config;
 use std::{net::SocketAddr, path::PathBuf};
-use tokio_postgres::NoTls;
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -42,13 +41,8 @@ async fn main() {
         config.addr = addr.to_string();
     }
     let addr = config.addr.parse::<SocketAddr>().unwrap();
-    let router = if let Some(pgstac) = cli.pgstac {
-        // Test the connection to blow it up early.
-        let _ = tokio_postgres::connect(&pgstac, NoTls).await.unwrap();
-        println!("Connected to pgstac at {}", pgstac);
-        let mut backend = PgstacBackend::from_str(&pgstac).await.unwrap();
-        stac_server_cli::load_files_into_backend(&mut backend, &cli.hrefs).await;
-        stac_server::api(backend, config).unwrap()
+    let router = if let Some(_) = cli.pgstac {
+        unimplemented!()
     } else {
         let mut backend = MemoryBackend::new();
         stac_server_cli::load_files_into_backend(&mut backend, &cli.hrefs).await;

@@ -1,5 +1,5 @@
 use stac::Value;
-use stac_backend::Backend;
+use stac_api_backend::Backend;
 use stac_server::Config;
 
 pub async fn load_files_into_backend<B>(backend: &mut B, hrefs: &[String])
@@ -20,7 +20,9 @@ where
     for collection in collections {
         backend.add_collection(collection).await.unwrap();
     }
-    // TODO add items
+    for item in items {
+        backend.add_item(item).await.unwrap();
+    }
 }
 
 pub fn default_config() -> Config {

@@ -1,0 +1,21 @@
+[package]
+name = "stac-api-backend"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1"
+serde = "1"
+serde_json = "1"
+serde_urlencoded = { version = "0.7", optional = true }
+stac = { version = "0.3", path = "../../stac-rs/stac" }
+stac-api = { version = "0.1", path = "../../stac-rs/stac-api" }
+thiserror = "1"
+url = { version = "2.3", optional = true }
+
+[dev-dependencies]
+stac = { version = "0.3.1", features = ["jsonschema"], path = "../../stac-rs/stac" }
+tokio = { version = "1.24", features = ["rt", "macros"] }
+
+[features]
+memory = ["dep:serde_urlencoded", "dep:url"]
