@@ -6,8 +6,8 @@ edition = "2021"
 [dependencies]
 axum = "0.6"
 clap = { version = "4", features = ["derive"] }
-stac = { version = "0.3", path = "../../stac-rs/stac" }
-stac-async = { version = "0.3", path = "../../stac-rs/stac-async" }
+stac = { version = "0.3", git = "https://github.com/gadomski/stac-rs", branch = "stac-api/server-updates" }
+stac-async = { version = "0.3", git = "https://github.com/gadomski/stac-rs", branch = "stac-api/server-updates" }
 stac-api-backend = { version = "0.0.1", path = "../stac-api-backend", features = ["memory"] }
 stac-server = { version = "0.0.1", path = "../stac-server" }
 tokio = { version = "1.23", features = ["macros", "rt-multi-thread"] }
