@@ -7,7 +7,7 @@ use axum::{
     Json, Router,
 };
 use stac::{Collection, Item};
-use stac_api::{Collections, ItemCollection, Root};
+use stac_api::{Collections, Conformance, ItemCollection, Root};
 use stac_api_backend::{Backend, Builder};
 
 pub fn api<B: Backend + 'static>(backend: B, config: Config) -> crate::Result<Router>
@@ -19,6 +19,7 @@ where
     let builder = Builder::new(backend, catalog, link_builder);
     Ok(Router::new()
         .route("/", get(root))
+        .route("/conformance", get(conformance))
         .route("/collections", get(collections))
         .route("/collections/:collection_id", get(collection))
         .route("/collections/:collection_id/items", get(items))
@@ -39,6 +40,13 @@ where
         .await
         .map(Json)
         .map_err(internal_server_error)
+}
+
+async fn conformance<B: Backend>(State(builder): State<Builder<B>>) -> Json<Conformance>
+where
+    stac_api_backend::Error: From<<B as Backend>::Error>,
+{
+    Json(builder.conformance())
 }
 
 async fn collections<B: Backend>(
@@ -239,6 +247,27 @@ mod tests {
                 Request::builder()
                     .method("GET")
                     .uri("/collections/a-collection/items/an-item")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "{:?}",
+            response.into_body().data().await
+        );
+    }
+
+    #[tokio::test]
+    async fn conformance() {
+        let api = super::api(MemoryBackend::new(), test_config().await).unwrap();
+        let response = api
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/conformance")
                     .body(Body::empty())
                     .unwrap(),
             )

@@ -1,6 +1,6 @@
 use crate::{Backend, Error, Result};
 use stac::{Catalog, Collection, Item};
-use stac_api::{Collections, ItemCollection, LinkBuilder, Root};
+use stac_api::{Collections, Conformance, ItemCollection, LinkBuilder, Root};
 
 // TODO move these to stac-api
 const CONFORMANCE_CLASSES: [&str; 5] = [
@@ -30,8 +30,8 @@ where
         }
     }
 
-    pub async fn root(self) -> Result<Root> {
-        let mut catalog = self.catalog;
+    pub async fn root(&self) -> Result<Root> {
+        let mut catalog = self.catalog.clone();
         // TODO check to make sure these links don't already exist
         catalog.links = vec![
             self.link_builder.root(),
@@ -47,11 +47,17 @@ where
         }
         Ok(Root {
             catalog,
-            conforms_to: CONFORMANCE_CLASSES.iter().map(|s| s.to_string()).collect(),
+            conformance: self.conformance(),
         })
     }
 
-    pub async fn collections(self) -> Result<Collections> {
+    pub fn conformance(&self) -> Conformance {
+        Conformance {
+            conforms_to: CONFORMANCE_CLASSES.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+
+    pub async fn collections(&self) -> Result<Collections> {
         let links = vec![
             self.link_builder.root(),
             self.link_builder.collections_to_self()?,
@@ -63,7 +69,7 @@ where
         })
     }
 
-    pub async fn collection(self, id: &str) -> Result<Option<Collection>> {
+    pub async fn collection(&self, id: &str) -> Result<Option<Collection>> {
         if let Some(mut collection) = self.backend.collection(id).await? {
             // TODO make sure we're not repeating links.
             collection.links.extend([
@@ -79,7 +85,7 @@ where
     }
 
     pub async fn items(
-        self,
+        &self,
         id: &str,
         pagination: Option<B::Pagination>,
     ) -> Result<Option<ItemCollection>> {
@@ -103,7 +109,7 @@ where
         }
     }
 
-    pub async fn item(self, collection_id: &str, item_id: &str) -> Result<Option<Item>> {
+    pub async fn item(&self, collection_id: &str, item_id: &str) -> Result<Option<Item>> {
         self.backend
             .item(collection_id, item_id)
             .await
@@ -128,10 +134,26 @@ mod tests {
         )
     }
 
+    fn assert_conformance_classes(conforms_to: &[String]) {
+        for conformance_class in [
+            "https://api.stacspec.org/v1.0.0-rc.2/ogcapi-feautres",
+            "https://api.stacspec.org/v1.0.0-rc.2/collections",
+            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
+            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
+        ] {
+            assert!(
+                conforms_to.contains(&conformance_class.to_string()),
+                "missing conformance class: {}",
+                conformance_class
+            );
+        }
+    }
+
     #[tokio::test]
     async fn core() {
         let root = builder().root().await.unwrap();
         assert!(root
+            .conformance
             .conforms_to
             .contains(&"https://api.stacspec.org/v1.0.0-rc.2/core".to_string()));
 
@@ -173,18 +195,7 @@ mod tests {
     async fn features() {
         let mut builder = builder();
         let root = builder.clone().root().await.unwrap();
-        for conformance_class in [
-            "https://api.stacspec.org/v1.0.0-rc.2/ogcapi-feautres",
-            "https://api.stacspec.org/v1.0.0-rc.2/collections",
-            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
-            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
-        ] {
-            assert!(
-                root.conforms_to.contains(&conformance_class.to_string()),
-                "missing conformance class: {}",
-                conformance_class
-            );
-        }
+        assert_conformance_classes(&root.conformance.conforms_to);
         let catalog = root.catalog;
         assert_eq!(
             catalog.link("conformance").as_ref().unwrap().href,
@@ -312,7 +323,8 @@ mod tests {
             items.link("prev").as_ref().unwrap().href,
             "http://stac-api-backend-rs.test/collections/an-id/items?skip=0&take=2"
         );
-    }
 
-    // TODO test the conformance endpoint
+        let conformance = builder.conformance();
+        assert_conformance_classes(&conformance.conforms_to);
+    }
 }
