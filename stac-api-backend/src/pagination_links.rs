@@ -34,10 +34,11 @@ impl<Q: Serialize> UnresolvedLink<Q> {
         }
     }
 
-    pub fn resolve(self, mut link: Link) -> Result<Link> {
+    pub fn resolve(mut self, mut link: Link) -> Result<Link> {
         // TODO handle POST
         link.set_query(self.query)?;
         link.title = self.title;
+        link.additional_fields.append(&mut self.additional_fields);
         Ok(link)
     }
 }
