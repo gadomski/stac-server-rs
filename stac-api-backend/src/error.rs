@@ -6,5 +6,8 @@ pub enum Error {
     Backend(Box<dyn std::error::Error + Send + Sync>),
 
     #[error(transparent)]
+    Stac(#[from] stac::Error),
+
+    #[error(transparent)]
     StacApi(#[from] stac_api::Error),
 }

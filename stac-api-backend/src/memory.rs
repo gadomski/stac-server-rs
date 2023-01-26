@@ -1,16 +1,16 @@
-use crate::Backend;
+use crate::{Backend, PaginationLinks, UnresolvedLink};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use stac::{Collection, Item, Link};
+use stac::{Collection, Item};
 use stac_api::ItemCollection;
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{Arc, RwLock},
 };
 use thiserror::Error;
-use url::Url;
 
 const DEFAULT_TAKE: usize = 20;
+pub type Query = [(&'static str, usize); 2];
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -24,13 +24,7 @@ pub enum Error {
     SerdeJson(#[from] serde_json::Error),
 
     #[error(transparent)]
-    SerdeUrlEncodedSer(#[from] serde_urlencoded::ser::Error),
-
-    #[error(transparent)]
     StacApi(#[from] stac_api::Error),
-
-    #[error(transparent)]
-    UrlParse(#[from] url::ParseError),
 }
 
 #[derive(Clone, Debug)]
@@ -43,12 +37,6 @@ pub struct MemoryBackend {
 pub struct Pagination {
     pub skip: usize,
     pub take: usize,
-}
-
-#[derive(Debug)]
-pub struct PaginationLinks {
-    next: Option<Pagination>,
-    prev: Option<Pagination>,
 }
 
 impl MemoryBackend {
@@ -64,7 +52,7 @@ impl MemoryBackend {
 impl Backend for MemoryBackend {
     type Error = Error;
     type Pagination = Pagination;
-    type PaginationLinks = PaginationLinks;
+    type Query = Query;
 
     async fn collections(&self) -> Result<Vec<Collection>, Error> {
         let collections = self.collections.read().unwrap();
@@ -92,7 +80,7 @@ impl Backend for MemoryBackend {
         &self,
         id: &str,
         pagination: Option<Pagination>,
-    ) -> Result<Option<(ItemCollection, PaginationLinks)>, Error> {
+    ) -> Result<Option<(ItemCollection, PaginationLinks<Self::Query>)>, Error> {
         let items = self.items.read().unwrap();
         if let Some(collection) = items.get(id) {
             let mut items = Vec::new();
@@ -143,10 +131,10 @@ impl From<Error> for crate::Error {
 }
 
 impl Pagination {
-    fn links(&self, n: usize) -> PaginationLinks {
+    fn links(&self, n: usize) -> PaginationLinks<Query> {
         PaginationLinks {
-            next: self.next(n),
-            prev: self.prev(),
+            next: self.next(n).map(|p| p.to_unresolved_link()),
+            prev: self.prev().map(|p| p.to_unresolved_link()),
         }
     }
 
@@ -172,15 +160,12 @@ impl Pagination {
         }
     }
 
-    fn add_params(&self, mut link: Link) -> Result<Link, Error> {
-        let mut url = Url::parse(&link.href)?;
-        url.set_query(Some(&self.to_params()?));
-        link.href = url.to_string();
-        Ok(link)
+    fn to_unresolved_link(&self) -> UnresolvedLink<Query> {
+        UnresolvedLink::new(self.to_query())
     }
 
-    fn to_params(&self) -> Result<String, Error> {
-        serde_urlencoded::to_string([("skip", self.skip), ("take", self.take)]).map_err(Error::from)
+    fn to_query(&self) -> Query {
+        [("skip", self.skip), ("take", self.take)]
     }
 }
 
@@ -190,24 +175,6 @@ impl Default for Pagination {
             skip: 0,
             take: DEFAULT_TAKE,
         }
-    }
-}
-
-impl crate::PaginationLinks for PaginationLinks {
-    fn next_link(&self, link: Link) -> crate::Result<Option<Link>> {
-        self.next
-            .as_ref()
-            .map(|pagination| pagination.add_params(link))
-            .transpose()
-            .map_err(crate::Error::from)
-    }
-
-    fn prev_link(&self, link: Link) -> crate::Result<Option<Link>> {
-        self.prev
-            .as_ref()
-            .map(|pagination| pagination.add_params(link))
-            .transpose()
-            .map_err(crate::Error::from)
     }
 }
 

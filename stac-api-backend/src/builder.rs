@@ -1,4 +1,4 @@
-use crate::{Backend, Error, PaginationLinks, Result};
+use crate::{Backend, Error, Result};
 use stac::{Catalog, Collection, Item};
 use stac_api::{Collections, ItemCollection, LinkBuilder, Root};
 
@@ -86,11 +86,16 @@ where
         if let Some((mut item_collection, pagination_links)) =
             self.backend.items(id, pagination).await?
         {
-            if let Some(next) = pagination_links.next_link(self.link_builder.next_items(id)?)? {
-                item_collection.links.push(next)
+            // TODO this could maybe be refactored so we can use the same logic in /search
+            if let Some(next) = pagination_links.next {
+                item_collection
+                    .links
+                    .push(next.resolve(self.link_builder.next_items(id)?)?);
             }
-            if let Some(prev) = pagination_links.prev_link(self.link_builder.prev_items(id)?)? {
-                item_collection.links.push(prev)
+            if let Some(prev) = pagination_links.prev {
+                item_collection
+                    .links
+                    .push(prev.resolve(self.link_builder.prev_items(id)?)?);
             }
             Ok(Some(item_collection))
         } else {
