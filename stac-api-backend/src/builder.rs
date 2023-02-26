@@ -255,7 +255,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert!(item_collection.features.is_empty());
+        assert!(item_collection.items.is_empty());
 
         builder
             .backend
@@ -268,7 +268,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(item_collection.features.len(), 1);
+        assert_eq!(item_collection.items.len(), 1);
         let _ = builder
             .clone()
             .item("collection-a", "item-id")
@@ -303,7 +303,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(items.features.len(), 2);
+        assert_eq!(items.items.len(), 2);
         assert_eq!(
             items.link("next").as_ref().unwrap().href,
             "http://stac-api-backend-rs.test/collections/an-id/items?skip=2&take=2"
@@ -314,7 +314,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(items.features.len(), 2);
+        assert_eq!(items.items.len(), 2);
         assert_eq!(
             items.link("next").as_ref().unwrap().href,
             "http://stac-api-backend-rs.test/collections/an-id/items?skip=4&take=2"

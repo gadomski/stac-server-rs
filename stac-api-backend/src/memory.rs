@@ -192,7 +192,7 @@ mod tests {
             .await
             .unwrap();
         let (items, _) = backend.items("an-id", None).await.unwrap().unwrap();
-        assert!(items.features.is_empty());
+        assert!(items.items.is_empty());
     }
 
     #[tokio::test]
@@ -214,7 +214,7 @@ mod tests {
             .unwrap()
             .unwrap()
             .0
-            .features
+            .items
             .into_iter()
             .map(|item| Item::try_from(item).unwrap().id)
             .collect();
