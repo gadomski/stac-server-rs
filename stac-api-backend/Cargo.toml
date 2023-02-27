@@ -7,12 +7,13 @@ edition = "2021"
 async-trait = "0.1"
 serde = "1"
 serde_json = "1"
-stac = { version = "0.3", git = "https://github.com/gadomski/stac-rs", branch = "stac-api/server-updates", features = ["set_query"] }
-stac-api = { version = "0.1", git = "https://github.com/gadomski/stac-rs", branch = "stac-api/server-updates" }
+stac = { version = "0.3", git = "https://github.com/gadomski/stac-rs", features = ["set_query"] }
+stac-api = { version = "0.1", git = "https://github.com/gadomski/stac-rs" }
 thiserror = "1"
+url = "2"
 
 [dev-dependencies]
-stac = { version = "0.3", git = "https://github.com/gadomski/stac-rs", branch = "stac-api/server-updates", features = ["jsonschema", "set_query"] }
+stac = { version = "0.3", git = "https://github.com/gadomski/stac-rs", features = ["jsonschema", "set_query"] }
 tokio = { version = "1.24", features = ["rt", "macros"] }
 
 [features]
