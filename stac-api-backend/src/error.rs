@@ -10,4 +10,7 @@ pub enum Error {
 
     #[error(transparent)]
     StacApi(#[from] stac_api::Error),
+
+    #[error(transparent)]
+    UrlParse(#[from] url::ParseError),
 }

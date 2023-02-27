@@ -36,9 +36,9 @@ where
         catalog.links = vec![
             self.link_builder.root(),
             self.link_builder.root_to_self(),
-            self.link_builder.service_desc()?,
-            self.link_builder.conformance()?,
-            self.link_builder.collections()?,
+            self.link_builder.service_desc(),
+            self.link_builder.conformance(),
+            self.link_builder.collections(),
         ];
         for collection in self.backend.collections().await? {
             catalog
@@ -60,7 +60,7 @@ where
     pub async fn collections(&self) -> Result<Collections> {
         let links = vec![
             self.link_builder.root(),
-            self.link_builder.collections_to_self()?,
+            self.link_builder.collections_to_self(),
         ];
         Ok(Collections {
             collections: vec![],
@@ -94,14 +94,16 @@ where
         {
             // TODO this could maybe be refactored so we can use the same logic in /search
             if let Some(next) = pagination_links.next {
+                // TODO where should the params come from?
                 item_collection
                     .links
-                    .push(next.resolve(self.link_builder.next_items(id)?)?);
+                    .push(next.resolve(self.link_builder.next_items(id, ())?)?);
             }
             if let Some(prev) = pagination_links.prev {
+                // TODO where should the params come from?
                 item_collection
                     .links
-                    .push(prev.resolve(self.link_builder.prev_items(id)?)?);
+                    .push(prev.resolve(self.link_builder.prev_items(id, ())?)?);
             }
             Ok(Some(item_collection))
         } else {
