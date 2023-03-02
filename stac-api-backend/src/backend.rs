@@ -1,17 +1,17 @@
-use crate::PaginationLinks;
+use crate::PaginatedItemCollection;
 use async_trait::async_trait;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 use stac::{Collection, Item};
-use stac_api::ItemCollection;
 use std::error::Error;
 
 /// A STAC API backend builds each STAC API endpoint.
 #[async_trait]
 pub trait Backend: Send + Sync + Clone {
+    /// The error type returned by the backend.
     type Error: Error + From<stac_api::Error>;
-    type Pagination: DeserializeOwned + Sync + Send;
-    type Query: Serialize;
+
+    /// The structure of the pagination for this endpoint.
+    type Pagination: DeserializeOwned + Serialize + Sync + Send;
 
     /// Returns collections.
     async fn collections(&self) -> Result<Vec<Collection>, Self::Error>;
@@ -24,7 +24,7 @@ pub trait Backend: Send + Sync + Clone {
         &self,
         id: &str,
         pagination: Option<Self::Pagination>,
-    ) -> Result<Option<(ItemCollection, PaginationLinks<Self::Query>)>, Self::Error>;
+    ) -> Result<Option<PaginatedItemCollection<Self::Pagination>>, Self::Error>;
 
     /// Returns an item.
     async fn item(&self, collection_id: &str, item_id: &str) -> Result<Option<Item>, Self::Error>;
