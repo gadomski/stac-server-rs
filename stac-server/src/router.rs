@@ -8,7 +8,7 @@ use axum::{
 };
 use stac::{Collection, Item};
 use stac_api::{Collections, Conformance, ItemCollection, Root};
-use stac_api_backend::{Backend, Builder};
+use stac_api_backend::{Backend, Endpoints};
 
 pub fn api<B: Backend + 'static>(backend: B, config: Config) -> crate::Result<Router>
 where
@@ -16,7 +16,7 @@ where
 {
     let link_builder = format!("http://{}", config.addr).parse()?; // TODO enable https
     let catalog = config.catalog.into_catalog();
-    let builder = Builder::new(backend, catalog, link_builder);
+    let builder = Endpoints::new(backend, catalog, link_builder);
     Ok(Router::new()
         .route("/", get(root))
         .route("/conformance", get(conformance))
@@ -30,7 +30,7 @@ where
 }
 
 async fn root<B: Backend>(
-    State(builder): State<Builder<B>>,
+    State(builder): State<Endpoints<B>>,
 ) -> Result<Json<Root>, impl IntoResponse>
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
@@ -42,7 +42,7 @@ where
         .map_err(internal_server_error)
 }
 
-async fn conformance<B: Backend>(State(builder): State<Builder<B>>) -> Json<Conformance>
+async fn conformance<B: Backend>(State(builder): State<Endpoints<B>>) -> Json<Conformance>
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
 {
@@ -50,7 +50,7 @@ where
 }
 
 async fn collections<B: Backend>(
-    State(builder): State<Builder<B>>,
+    State(builder): State<Endpoints<B>>,
 ) -> Result<Json<Collections>, impl IntoResponse>
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
@@ -63,7 +63,7 @@ where
 }
 
 pub async fn collection<B: Backend>(
-    State(builder): State<Builder<B>>,
+    State(builder): State<Endpoints<B>>,
     Path(id): Path<String>,
 ) -> Result<Json<Collection>, impl IntoResponse>
 where
@@ -86,7 +86,7 @@ where
 }
 
 pub async fn items<B: Backend>(
-    State(builder): State<Builder<B>>,
+    State(builder): State<Endpoints<B>>,
     Path(id): Path<String>,
     pagination: Option<Query<B::Pagination>>,
 ) -> Result<Json<ItemCollection>, impl IntoResponse>
@@ -111,7 +111,7 @@ where
 }
 
 pub async fn item<B: Backend>(
-    State(builder): State<Builder<B>>,
+    State(builder): State<Endpoints<B>>,
     Path((id, item_id)): Path<(String, String)>,
 ) -> Result<Json<Item>, impl IntoResponse>
 where

@@ -1,4 +1,4 @@
-use crate::{Backend, PaginationLinks, UnresolvedLink};
+use crate::{Backend, PaginatedItemCollection};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use stac::{Collection, Item};
@@ -10,7 +10,6 @@ use std::{
 use thiserror::Error;
 
 const DEFAULT_TAKE: usize = 20;
-pub type Query = [(&'static str, usize); 2];
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -18,10 +17,7 @@ pub enum Error {
     CollectionDoesNotExist(String),
 
     #[error("there is no collection on this item: {}", .0.id)]
-    NoCollection(stac::Item),
-
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
+    NoCollection(Item),
 
     #[error(transparent)]
     Stac(#[from] stac::Error),
@@ -30,6 +26,9 @@ pub enum Error {
     StacApi(#[from] stac_api::Error),
 }
 
+/// A backend that stores its collections and items in memory.
+///
+/// Used mostly for testing.
 #[derive(Clone, Debug)]
 pub struct MemoryBackend {
     collections: Arc<RwLock<HashMap<String, Collection>>>,
@@ -43,6 +42,14 @@ pub struct Pagination {
 }
 
 impl MemoryBackend {
+    /// Creates a new memory backend.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use stac_api_backend::MemoryBackend;
+    /// let backend = MemoryBackend::new();
+    /// ```
     pub fn new() -> MemoryBackend {
         MemoryBackend {
             collections: Arc::new(RwLock::new(HashMap::new())),
@@ -55,7 +62,6 @@ impl MemoryBackend {
 impl Backend for MemoryBackend {
     type Error = Error;
     type Pagination = Pagination;
-    type Query = Query;
 
     async fn collections(&self) -> Result<Vec<Collection>, Error> {
         let collections = self.collections.read().unwrap();
@@ -75,7 +81,7 @@ impl Backend for MemoryBackend {
         }
         let mut items = self.items.write().unwrap();
         // TODO what should happen if items already exist for the collection?
-        items.insert(collection_id, BTreeMap::new());
+        let _ = items.insert(collection_id, BTreeMap::new());
         Ok(())
     }
 
@@ -83,21 +89,24 @@ impl Backend for MemoryBackend {
         &self,
         id: &str,
         pagination: Option<Pagination>,
-    ) -> Result<Option<(ItemCollection, PaginationLinks<Self::Query>)>, Error> {
+    ) -> Result<Option<PaginatedItemCollection<Pagination>>, Error> {
         let items = self.items.read().unwrap();
-        if let Some(collection) = items.get(id) {
-            let mut items = Vec::new();
+        if let Some(items) = items.get(id) {
             let pagination = pagination.unwrap_or_default();
-            // TODO ceil page size
-            for item in collection
+            let n = items.len();
+            let items: Vec<_> = items
                 .values()
+                .cloned()
                 .skip(pagination.skip)
                 .take(pagination.take)
-            {
-                items.push(item.clone().try_into()?);
-            }
+                .map(|item| stac_api::Item::try_from(item))
+                .collect::<Result<_, _>>()?;
             let item_collection = ItemCollection::new(items)?;
-            Ok(Some((item_collection, pagination.links(collection.len()))))
+            Ok(Some(PaginatedItemCollection {
+                item_collection,
+                next: pagination.next(n),
+                prev: pagination.prev(),
+            }))
         } else {
             Ok(None)
         }
@@ -116,7 +125,8 @@ impl Backend for MemoryBackend {
             if self.collection(&collection).await?.is_some() {
                 let mut items = self.items.write().unwrap();
                 let collection = items.entry(collection).or_default();
-                collection.insert(item.id.clone(), item);
+                // TODO what to do if there's already an item
+                let _ = collection.insert(item.id.clone(), item);
                 Ok(())
             } else {
                 Err(Error::CollectionDoesNotExist(collection))
@@ -134,13 +144,6 @@ impl From<Error> for crate::Error {
 }
 
 impl Pagination {
-    fn links(&self, n: usize) -> PaginationLinks<Query> {
-        PaginationLinks {
-            next: self.next(n).map(|p| p.to_unresolved_link()),
-            prev: self.prev().map(|p| p.to_unresolved_link()),
-        }
-    }
-
     fn next(&self, n: usize) -> Option<Pagination> {
         if self.skip + self.take < n {
             Some(Pagination {
@@ -161,14 +164,6 @@ impl Pagination {
         } else {
             None
         }
-    }
-
-    fn to_unresolved_link(&self) -> UnresolvedLink<Query> {
-        UnresolvedLink::new(self.to_query())
-    }
-
-    fn to_query(&self) -> Query {
-        [("skip", self.skip), ("take", self.take)]
     }
 }
 
@@ -194,8 +189,8 @@ mod tests {
             .add_collection(Collection::new("an-id", "a description"))
             .await
             .unwrap();
-        let (items, _) = backend.items("an-id", None).await.unwrap().unwrap();
-        assert!(items.items.is_empty());
+        let paginated_item_collection = backend.items("an-id", None).await.unwrap().unwrap();
+        assert!(paginated_item_collection.item_collection.items.is_empty());
     }
 
     #[tokio::test]
@@ -216,7 +211,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap()
-            .0
+            .item_collection
             .items
             .into_iter()
             .map(|item| Item::try_from(item).unwrap().id)

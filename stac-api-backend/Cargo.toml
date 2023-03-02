@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1"
 serde = "1"
-serde_json = "1"
 stac = { version = "0.3", git = "https://github.com/gadomski/stac-rs", features = ["set_query"] }
 stac-api = { version = "0.1", git = "https://github.com/gadomski/stac-rs" }
 thiserror = "1"

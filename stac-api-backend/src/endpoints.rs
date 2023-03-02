@@ -1,5 +1,5 @@
 use crate::{Backend, Error, Result};
-use stac::{Catalog, Collection, Item};
+use stac::{Catalog, Collection, Item, Links};
 use stac_api::{Collections, Conformance, ItemCollection, LinkBuilder, Root};
 
 // TODO move these to stac-api
@@ -11,25 +11,39 @@ const CONFORMANCE_CLASSES: [&str; 5] = [
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
 ];
 
+/// A structure for generating STAC API endpoints.
 #[derive(Clone, Debug)]
-pub struct Builder<B: Backend> {
+pub struct Endpoints<B: Backend> {
     backend: B,
     catalog: Catalog,
     link_builder: LinkBuilder,
 }
 
-impl<B: Backend> Builder<B>
+impl<B: Backend> Endpoints<B>
 where
     Error: From<<B as Backend>::Error>,
 {
-    pub fn new(backend: B, catalog: Catalog, link_builder: LinkBuilder) -> Builder<B> {
-        Builder {
+    /// Creates a new endpoint generator with the given backend, catalog, and link builder.
+    ///
+    /// The catalog is used as the root endpoint.
+    ///
+    /// # Examples
+    ///
+    /// TODO
+    pub fn new(backend: B, catalog: Catalog, link_builder: LinkBuilder) -> Endpoints<B> {
+        Endpoints {
             backend,
             catalog,
             link_builder,
         }
     }
 
+    /// Returns the root endpoint, as defined by
+    /// <https://github.com/radiantearth/stac-api-spec/tree/main/core#endpoints>.
+    ///
+    /// # Examples
+    ///
+    /// TODO
     pub async fn root(&self) -> Result<Root> {
         let mut catalog = self.catalog.clone();
         // TODO check to make sure these links don't already exist
@@ -51,12 +65,14 @@ where
         })
     }
 
+    /// Returns the conformance endpoint.
     pub fn conformance(&self) -> Conformance {
         Conformance {
             conforms_to: CONFORMANCE_CLASSES.iter().map(|s| s.to_string()).collect(),
         }
     }
 
+    /// Returns the collections endpoint.
     pub async fn collections(&self) -> Result<Collections> {
         let links = vec![
             self.link_builder.root(),
@@ -69,6 +85,7 @@ where
         })
     }
 
+    /// Returns the endpoint for a single collection.
     pub async fn collection(&self, id: &str) -> Result<Option<Collection>> {
         if let Some(mut collection) = self.backend.collection(id).await? {
             // TODO make sure we're not repeating links.
@@ -84,26 +101,21 @@ where
         }
     }
 
+    /// Returns items.
     pub async fn items(
         &self,
         id: &str,
         pagination: Option<B::Pagination>,
     ) -> Result<Option<ItemCollection>> {
-        if let Some((mut item_collection, pagination_links)) =
-            self.backend.items(id, pagination).await?
-        {
-            // TODO this could maybe be refactored so we can use the same logic in /search
-            if let Some(next) = pagination_links.next {
-                // TODO where should the params come from?
-                item_collection
-                    .links
-                    .push(next.resolve(self.link_builder.next_items(id, ())?)?);
+        if let Some(paginated_item_collection) = self.backend.items(id, pagination).await? {
+            let mut item_collection = paginated_item_collection.item_collection;
+            if let Some(next) = paginated_item_collection.next {
+                let link = self.link_builder.next_items(id, next)?;
+                item_collection.set_link(link);
             }
-            if let Some(prev) = pagination_links.prev {
-                // TODO where should the params come from?
-                item_collection
-                    .links
-                    .push(prev.resolve(self.link_builder.prev_items(id, ())?)?);
+            if let Some(prev) = paginated_item_collection.prev {
+                let link = self.link_builder.prev_items(id, prev)?;
+                item_collection.set_link(link);
             }
             Ok(Some(item_collection))
         } else {
@@ -111,6 +123,7 @@ where
         }
     }
 
+    /// Returns a single item.
     pub async fn item(&self, collection_id: &str, item_id: &str) -> Result<Option<Item>> {
         self.backend
             .item(collection_id, item_id)
@@ -121,15 +134,15 @@ where
 
 #[cfg(all(test, feature = "memory"))]
 mod tests {
-    use super::Builder;
+    use super::Endpoints;
     use crate::{
         memory::{MemoryBackend, Pagination},
         Backend,
     };
     use stac::{Catalog, Collection, Item, Links, Validate};
 
-    fn builder() -> Builder<MemoryBackend> {
-        Builder::new(
+    fn builder() -> Endpoints<MemoryBackend> {
+        Endpoints::new(
             MemoryBackend::new(),
             Catalog::new("test-catalog", "A catalog for testing"),
             "http://stac-api-backend-rs.test".parse().unwrap(),
