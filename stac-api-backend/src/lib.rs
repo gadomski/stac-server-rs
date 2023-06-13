@@ -3,16 +3,12 @@
 //! The [STAC API specification](https://github.com/radiantearth/stac-api-spec)
 //! describes how [STAC](https://github.com/radiantearth/stac-spec) objects
 //! should be served over the network. This crate defines an interface for
-//! fetching STAC objects from storage, and providing them to a STAC API server.
+//! fetching STAC objects from storage, and serving them via a STAC API server.
 //!
 //! The goal of this crate is to provide an abstraction layer between actual
 //! server implementations, which might vary from framework to framework, and
 //! their backends. This crate is **opinionated** because it sacrifices
-//! flexibility in favor of enforcing a certain interface. We feel comfortable
-//! with these opinionated decisions because we have implemented this interface
-//! twice (as of this writing): once for an [in-memory backend provided as a
-//! feature in this crate](crate::memory::MemoryBackend), and again for a
-//! backend based on [pgstac](https://github.com/stac-utils/pgstac).
+//! flexibility in favor of enforcing its chosen interface.
 
 #![deny(
     elided_lifetimes_in_paths,
@@ -44,22 +40,19 @@
     unused_results
 )]
 
+mod api;
 mod backend;
-mod endpoints;
 mod error;
-#[cfg(feature = "memory")]
 mod memory;
-mod paginated_item_collection;
+mod page;
 
-#[cfg(feature = "memory")]
-pub use self::memory::MemoryBackend;
-pub use {
-    backend::Backend, endpoints::Endpoints, error::Error,
-    paginated_item_collection::PaginatedItemCollection,
-};
+pub use {api::Api, backend::Backend, error::Error, memory::MemoryBackend, page::Page};
 
 /// A crate-specific result type.
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(test)]
-use tokio as _;
+mod tests {
+    use tokio as _;
+    use tokio_test as _;
+}

@@ -1,7 +1,8 @@
 use axum::Server;
 use clap::Parser;
+use pgstac_api_backend::PgstacBackend;
 use stac_api_backend::MemoryBackend;
-use stac_server::Config;
+use stac_server_cli::{BackendConfig, Config};
 use std::{net::SocketAddr, path::PathBuf};
 
 #[derive(Debug, Parser)]
@@ -14,13 +15,13 @@ struct Cli {
 
     /// The address to serve the API.
     ///
-    /// If not provided, will be read from the configuration.
+    /// This will override any address configuration in the config file.
     #[arg(short, long)]
     addr: Option<String>,
 
     /// The address of the pgstac database.
     ///
-    /// If not provided, a memory backend will be used.
+    /// This will override any backend configuration in the config file.
     #[arg(short, long)]
     pgstac: Option<String>,
 
@@ -35,19 +36,37 @@ async fn main() {
     let mut config = if let Some(config) = cli.config {
         Config::from_toml(config).await.unwrap()
     } else {
-        stac_server_cli::default_config()
+        Config::default()
     };
+
     if let Some(addr) = &cli.addr {
-        config.addr = addr.to_string();
+        config.server.addr = addr.to_string();
     }
-    let addr = config.addr.parse::<SocketAddr>().unwrap();
-    let router = if let Some(_) = cli.pgstac {
-        unimplemented!()
-    } else {
-        let mut backend = MemoryBackend::new();
-        stac_server_cli::load_files_into_backend(&mut backend, &cli.hrefs).await;
-        stac_server::api(backend, config).unwrap()
+    if let Some(pgstac) = &cli.pgstac {
+        config.backend.set_pgstac_config(pgstac);
+    }
+
+    let addr = config.server.addr.parse::<SocketAddr>().unwrap();
+    let router = match config.backend {
+        BackendConfig::Memory => {
+            let mut backend = MemoryBackend::new();
+            stac_server_cli::load_hrefs(&mut backend, cli.hrefs)
+                .await
+                .unwrap();
+            stac_server::api(backend, config.server).unwrap()
+        }
+        BackendConfig::Pgstac(pgstac) => {
+            let (_, _) = tokio_postgres::connect(&pgstac.config, tokio_postgres::NoTls)
+                .await
+                .unwrap();
+            let mut backend = PgstacBackend::connect(&pgstac.config).await.unwrap();
+            stac_server_cli::load_hrefs(&mut backend, cli.hrefs)
+                .await
+                .unwrap();
+            stac_server::api(backend, config.server).unwrap()
+        }
     };
+
     println!("Serving on http://{}", addr);
     Server::bind(&addr)
         .serve(router.into_make_service())

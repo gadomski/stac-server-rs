@@ -6,11 +6,16 @@ edition = "2021"
 [dependencies]
 axum = "0.6"
 clap = { version = "4", features = ["derive"] }
-stac = { version = "0.3", git = "https://github.com/gadomski/stac-rs" }
-stac-async = { version = "0.3", git = "https://github.com/gadomski/stac-rs" }
-stac-api-backend = { version = "0.0.1", path = "../stac-api-backend", features = ["memory"] }
+serde = "1"
+stac = { version = "0.4", git = "https://github.com/gadomski/stac-rs" }
+stac-async = { version = "0.4", git = "https://github.com/gadomski/stac-rs" }
+stac-api-backend = { version = "0.0.1", path = "../stac-api-backend" }
 stac-server = { version = "0.0.1", path = "../stac-server" }
+pgstac-api-backend = { path = "../pgstac-api-backend" }
+thiserror = "1"
 tokio = { version = "1.23", features = ["macros", "rt-multi-thread"] }
+tokio-postgres = "0.7"
+toml = "0.7"
 
 [lib]
 path = "src/lib.rs"
