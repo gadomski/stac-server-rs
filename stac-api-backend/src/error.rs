@@ -7,6 +7,10 @@ pub enum Error {
     #[error("backend error: {0}")]
     Backend(Box<dyn std::error::Error + Send + Sync>),
 
+    /// [serde_json::Error]
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+
     /// [stac::Error]
     #[error(transparent)]
     Stac(#[from] stac::Error),

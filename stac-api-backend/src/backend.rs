@@ -1,6 +1,6 @@
-use crate::PaginatedItemCollection;
+use crate::Page;
 use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::de::DeserializeOwned;
 use stac::{Collection, Item};
 use std::error::Error;
 
@@ -8,30 +8,35 @@ use std::error::Error;
 #[async_trait]
 pub trait Backend: Send + Sync + Clone {
     /// The error type returned by the backend.
-    type Error: Error + From<stac_api::Error>;
+    type Error: Error;
 
-    /// The structure of the pagination for this endpoint.
-    type Pagination: DeserializeOwned + Serialize + Sync + Send;
+    /// The type of the page returned by the items endpoint and by item search.
+    type Page: Page;
 
-    /// Returns collections.
+    /// The type of the query used for the items endpoint.
+    type Query: DeserializeOwned;
+
+    /// Returns all collections in this backend.
     async fn collections(&self) -> Result<Vec<Collection>, Self::Error>;
 
-    /// Returns a collection.
+    /// Returns a single collection.
     async fn collection(&self, id: &str) -> Result<Option<Collection>, Self::Error>;
 
     /// Returns items.
-    async fn items(
-        &self,
-        id: &str,
-        pagination: Option<Self::Pagination>,
-    ) -> Result<Option<PaginatedItemCollection<Self::Pagination>>, Self::Error>;
+    async fn items(&self, id: &str, query: Self::Query) -> Result<Option<Self::Page>, Self::Error>;
 
     /// Returns an item.
-    async fn item(&self, collection_id: &str, item_id: &str) -> Result<Option<Item>, Self::Error>;
+    async fn item(&self, collection_id: &str, id: &str) -> Result<Option<Item>, Self::Error>;
 
-    /// Adds a collection to the backend.
-    async fn add_collection(&mut self, collection: Collection) -> Result<(), Self::Error>;
+    /// Adds a new collection to this backend.
+    async fn add_collection(
+        &mut self,
+        collection: Collection,
+    ) -> Result<Option<Collection>, Self::Error>;
 
-    /// Adds an item to the backend.
+    /// Adds new items to this backend.
+    async fn add_items(&mut self, items: Vec<Item>) -> Result<(), Self::Error>;
+
+    /// Adds a new item to this backend.
     async fn add_item(&mut self, item: Item) -> Result<(), Self::Error>;
 }

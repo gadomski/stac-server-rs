@@ -1,46 +1,37 @@
-//! Server configuration.
-
-use crate::{Error, Result};
 use serde::Deserialize;
 use stac::Catalog;
-use std::{path::Path, str::FromStr};
-use tokio::{
-    fs::File,
-    io::{AsyncReadExt, BufReader},
-};
 
-#[derive(Debug, Deserialize)]
+/// Server configuration.
+#[derive(Clone, Debug, Deserialize)]
 pub struct Config {
+    /// The IP address of the server.
     #[serde(default = "default_addr")]
     pub addr: String,
 
+    /// The catalog configuration.
     pub catalog: CatalogConfig,
 }
 
-#[derive(Debug, Deserialize)]
+/// Catalog configuration.
+#[derive(Clone, Debug, Deserialize)]
 pub struct CatalogConfig {
+    /// The catalog's id.
     pub id: String,
 
+    /// The catalog's description.
     pub description: String,
 }
 
-impl Config {
-    pub async fn from_toml(path: impl AsRef<Path>) -> Result<Config> {
-        let mut reader = File::open(path).await.map(BufReader::new)?;
-        let mut string = String::new();
-        reader.read_to_string(&mut string).await?;
-        string.parse()
-    }
-}
-
-impl FromStr for Config {
-    type Err = Error;
-    fn from_str(s: &str) -> Result<Config> {
-        toml::from_str(&s).map_err(Error::from)
-    }
-}
-
 impl CatalogConfig {
+    /// Creates a new catalog from this catalog configuration.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use stac_server::CatalogConfig;
+    /// let config = CatalogConfig { id: "an-id".to_string(), description: "a description".to_string() };
+    /// let catalog = config.into_catalog();
+    /// ```
     pub fn into_catalog(self) -> Catalog {
         Catalog::new(self.id, self.description)
     }

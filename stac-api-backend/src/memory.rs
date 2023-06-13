@@ -1,22 +1,23 @@
-use crate::{Backend, PaginatedItemCollection};
+use crate::Backend;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use stac::{Collection, Item};
+use serde::Deserialize;
+use stac::{Collection, Item, Link, Links};
 use stac_api::ItemCollection;
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     sync::{Arc, RwLock},
 };
 use thiserror::Error;
+use url::Url;
 
 const DEFAULT_TAKE: usize = 20;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("collection with id {0} does not exist")]
-    CollectionDoesNotExist(String),
+    #[error("no collection id={0}")]
+    CollectionNotFound(String),
 
-    #[error("there is no collection on this item: {}", .0.id)]
+    #[error("no collection set on item with id={}", .0.id)]
     NoCollection(Item),
 
     #[error(transparent)]
@@ -24,21 +25,40 @@ pub enum Error {
 
     #[error(transparent)]
     StacApi(#[from] stac_api::Error),
+
+    #[error(transparent)]
+    TryInt(#[from] std::num::TryFromIntError),
 }
+
+type Result<T> = std::result::Result<T, Error>;
 
 /// A backend that stores its collections and items in memory.
 ///
 /// Used mostly for testing.
 #[derive(Clone, Debug)]
 pub struct MemoryBackend {
-    collections: Arc<RwLock<HashMap<String, Collection>>>,
-    items: Arc<RwLock<HashMap<String, BTreeMap<String, Item>>>>,
+    collections: Arc<RwLock<BTreeMap<String, Collection>>>,
+    items: Arc<RwLock<BTreeMap<String, Vec<Item>>>>,
+    take: usize,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Pagination {
-    pub skip: usize,
-    pub take: usize,
+/// A page from the memory backend.
+#[derive(Debug)]
+pub struct Page {
+    items: Vec<Item>,
+    number_matched: usize,
+    skip: usize,
+    take: usize,
+}
+
+/// A query for the backend.
+#[derive(Debug, Deserialize, Default)]
+pub struct Query {
+    /// The number of items to skip.
+    pub skip: Option<usize>,
+
+    /// The number of items to return.
+    pub take: Option<usize>,
 }
 
 impl MemoryBackend {
@@ -52,8 +72,9 @@ impl MemoryBackend {
     /// ```
     pub fn new() -> MemoryBackend {
         MemoryBackend {
-            collections: Arc::new(RwLock::new(HashMap::new())),
-            items: Arc::new(RwLock::new(HashMap::new())),
+            collections: Arc::new(RwLock::new(BTreeMap::new())),
+            items: Arc::new(RwLock::new(BTreeMap::new())),
+            take: DEFAULT_TAKE,
         }
     }
 }
@@ -61,161 +82,145 @@ impl MemoryBackend {
 #[async_trait]
 impl Backend for MemoryBackend {
     type Error = Error;
-    type Pagination = Pagination;
+    type Page = Page;
+    type Query = Query;
 
-    async fn collections(&self) -> Result<Vec<Collection>, Error> {
+    async fn collections(&self) -> Result<Vec<Collection>> {
         let collections = self.collections.read().unwrap();
         Ok(collections.values().cloned().collect())
     }
 
-    async fn collection(&self, id: &str) -> Result<Option<Collection>, Error> {
+    async fn collection(&self, id: &str) -> Result<Option<Collection>> {
         let collections = self.collections.read().unwrap();
         Ok(collections.get(id).cloned())
     }
 
-    async fn add_collection(&mut self, collection: Collection) -> Result<(), Error> {
-        let collection_id = collection.id.clone();
-        {
-            let mut collections = self.collections.write().unwrap();
-            let _ = collections.insert(collection_id.clone(), collection); // TODO should this error if one exists?
-        }
-        let mut items = self.items.write().unwrap();
-        // TODO what should happen if items already exist for the collection?
-        let _ = items.insert(collection_id, BTreeMap::new());
-        Ok(())
-    }
-
-    async fn items(
-        &self,
-        id: &str,
-        pagination: Option<Pagination>,
-    ) -> Result<Option<PaginatedItemCollection<Pagination>>, Error> {
+    async fn items(&self, id: &str, query: Query) -> Result<Option<Page>> {
+        let skip = query.skip.unwrap_or_default();
+        let take = query.take.unwrap_or(self.take);
         let items = self.items.read().unwrap();
         if let Some(items) = items.get(id) {
-            let pagination = pagination.unwrap_or_default();
-            let n = items.len();
-            let items: Vec<_> = items
-                .values()
-                .cloned()
-                .skip(pagination.skip)
-                .take(pagination.take)
-                .map(|item| stac_api::Item::try_from(item))
-                .collect::<Result<_, _>>()?;
-            let item_collection = ItemCollection::new(items)?;
-            Ok(Some(PaginatedItemCollection {
-                item_collection,
-                next: pagination.next(n),
-                prev: pagination.prev(),
+            let number_matched = items.len();
+            let items: Vec<_> = items.iter().cloned().skip(skip).take(take).collect();
+            Ok(Some(Page {
+                items,
+                number_matched,
+                skip,
+                take,
             }))
+        } else {
+            let collections = self.collections.read().unwrap();
+            if collections.contains_key(id) {
+                Ok(Some(Page {
+                    items: vec![],
+                    number_matched: 0,
+                    skip,
+                    take,
+                }))
+            } else {
+                Ok(None)
+            }
+        }
+    }
+
+    async fn item(&self, collection_id: &str, id: &str) -> Result<Option<Item>> {
+        let items = self.items.read().unwrap();
+        if let Some(item) = items
+            .get(collection_id)
+            .and_then(|items| items.iter().find(|item| item.id == id))
+        {
+            Ok(Some(item.clone()))
         } else {
             Ok(None)
         }
     }
 
-    async fn item(&self, collection_id: &str, item_id: &str) -> Result<Option<Item>, Error> {
-        let items = self.items.read().unwrap();
-        Ok(items
-            .get(collection_id)
-            .and_then(|c| c.get(item_id))
-            .cloned())
+    async fn add_collection(&mut self, mut collection: Collection) -> Result<Option<Collection>> {
+        collection.remove_structural_links();
+        let mut collections = self.collections.write().unwrap(); // TODO handle poison gracefully
+        Ok(collections.insert(collection.id.clone(), collection))
     }
 
-    async fn add_item(&mut self, item: Item) -> Result<(), Error> {
-        if let Some(collection) = item.collection.as_ref().cloned() {
-            if self.collection(&collection).await?.is_some() {
-                let mut items = self.items.write().unwrap();
-                let collection = items.entry(collection).or_default();
-                // TODO what to do if there's already an item
-                let _ = collection.insert(item.id.clone(), item);
-                Ok(())
+    async fn add_items(&mut self, items: Vec<Item>) -> Result<()> {
+        let collections = self.collections.read().unwrap();
+        let mut items_map = self.items.write().unwrap();
+        for mut item in items {
+            if let Some(collection) = item.collection.clone() {
+                if collections.contains_key(&collection) {
+                    item.remove_structural_links();
+                    items_map.entry(collection.clone()).or_default().push(item);
+                } else {
+                    return Err(Error::CollectionNotFound(collection.clone()));
+                }
             } else {
-                Err(Error::CollectionDoesNotExist(collection))
+                return Err(Error::NoCollection(item));
             }
-        } else {
-            Err(Error::NoCollection(item))
         }
+        Ok(())
+    }
+
+    async fn add_item(&mut self, item: Item) -> Result<()> {
+        self.add_items(vec![item]).await
+    }
+}
+
+impl crate::Page for Page {
+    type Error = Error;
+
+    fn into_item_collection(self, url: Url) -> Result<ItemCollection> {
+        let items = self
+            .items
+            .into_iter()
+            .map(|item| item.try_into().map_err(Error::from))
+            .collect::<Result<Vec<stac_api::Item>>>()?;
+        let mut links = Vec::new();
+        if items.len() == self.take {
+            let mut url = url.clone();
+            let _ = url
+                .query_pairs_mut()
+                .append_pair("skip", &(self.skip + items.len()).to_string())
+                .append_pair("take", &self.take.to_string());
+            links.push(Link::new(url, "next").geojson());
+        }
+        if self.skip > 0 {
+            let skip = if self.skip > self.take {
+                self.skip - self.take
+            } else {
+                0
+            };
+            let mut url = url.clone();
+            let _ = url
+                .query_pairs_mut()
+                .append_pair("skip", &skip.to_string())
+                .append_pair("take", &self.take.to_string());
+            links.push(Link::new(url, "prev").geojson());
+        }
+        let mut item_collection = ItemCollection::new(items)?;
+        item_collection.number_matched = Some(self.number_matched.try_into()?);
+        item_collection.links = links;
+        Ok(item_collection)
     }
 }
 
 impl From<Error> for crate::Error {
-    fn from(err: Error) -> crate::Error {
-        crate::Error::Backend(Box::new(err))
-    }
-}
-
-impl Pagination {
-    fn next(&self, n: usize) -> Option<Pagination> {
-        if self.skip + self.take < n {
-            Some(Pagination {
-                skip: self.skip + self.take,
-                take: self.take,
-            })
-        } else {
-            None
-        }
-    }
-
-    fn prev(&self) -> Option<Pagination> {
-        if self.skip >= self.take {
-            Some(Pagination {
-                skip: self.skip - self.take,
-                take: self.take,
-            })
-        } else {
-            None
-        }
-    }
-}
-
-impl Default for Pagination {
-    fn default() -> Pagination {
-        Pagination {
-            skip: 0,
-            take: DEFAULT_TAKE,
-        }
+    fn from(value: Error) -> Self {
+        crate::Error::Backend(Box::new(value))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{MemoryBackend, Pagination};
+    use super::MemoryBackend;
     use crate::Backend;
-    use stac::{Collection, Item};
+    use stac::Collection;
 
     #[tokio::test]
-    async fn adding_collection_adds_items_entry() {
+    async fn add_collection() {
         let mut backend = MemoryBackend::new();
-        backend
-            .add_collection(Collection::new("an-id", "a description"))
+        let _ = backend
+            .add_collection(Collection::new("a-collection", "A description"))
             .await
             .unwrap();
-        let paginated_item_collection = backend.items("an-id", None).await.unwrap().unwrap();
-        assert!(paginated_item_collection.item_collection.items.is_empty());
-    }
-
-    #[tokio::test]
-    async fn paginate_items() {
-        let mut backend = MemoryBackend::new();
-        backend
-            .add_collection(Collection::new("an-id", "a description"))
-            .await
-            .unwrap();
-        for i in 0..10 {
-            backend
-                .add_item(Item::new(format!("item-{}", i)).collection("an-id"))
-                .await
-                .unwrap();
-        }
-        let ids: Vec<_> = backend
-            .items("an-id", Some(Pagination { take: 2, skip: 3 }))
-            .await
-            .unwrap()
-            .unwrap()
-            .item_collection
-            .items
-            .into_iter()
-            .map(|item| Item::try_from(item).unwrap().id)
-            .collect();
-        assert_eq!(ids, vec!["item-3", "item-4"]);
+        assert_eq!(backend.collections().await.unwrap().len(), 1);
     }
 }
