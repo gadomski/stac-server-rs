@@ -1,6 +1,7 @@
 # stac-server-rs
 
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/gadomski/stac-server-rs/ci.yml?branch=main&style=for-the-badge)](https://github.com/gadomski/stac-server-rs/actions/workflows/ci.yml)
+[![STAC API Validator](https://img.shields.io/github/actions/workflow/status/gadomski/stac-server-rs/validate.yml?branch=main&label=STAC+API+Validator&style=for-the-badge)](https://github.com/gadomski/stac-server-rs/actions/workflows/ci.yml)
 ![Crates.io](https://img.shields.io/crates/l/stac-server?style=for-the-badge)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg?style=for-the-badge)](./CODE_OF_CONDUCT)
 
