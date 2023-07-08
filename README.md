@@ -38,6 +38,19 @@ If you have a [pgstac](https://github.com/stac-utils/pgstac) database pre-popula
 stac-server --pgstac postgres://username:password@localhost/postgis
 ```
 
+## Conformance classes
+
+The STAC API spec uses "conformance classes" to describe the functionality of a server.
+These are the supported conformance classes for each backend:
+
+| Conformance class | Memory backend | pgstac backend |
+| -- | -- | -- |
+| [Core](https://github.com/radiantearth/stac-api-spec/tree/main/core) | ✅ | ✅ |
+| [Features](https://github.com/radiantearth/stac-api-spec/tree/main/ogcapi-features) | ✅ | ✅ |
+| [Item search](https://github.com/radiantearth/stac-api-spec/tree/main/item-search) | ❌ | ❌ |
+
+Conformance classes are validated with [stac-api-validator](https://github.com/stac-utils/stac-api-validator) in [CI](https://github.com/gadomski/stac-server-rs/actions/workflows/validate.yml).
+
 ## License
 
 **stac-server-rs** is dual-licensed under both the MIT license and the Apache license (Version 2.0).
