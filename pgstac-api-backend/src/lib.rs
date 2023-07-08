@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use pgstac::Client;
+use schemars::JsonSchema;
 use serde::Deserialize;
 use stac::{Collection, Item, Link};
 use stac_api::{ItemCollection, Search};
@@ -35,7 +36,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub struct Page(pgstac::Page);
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct Query {
     token: Option<String>,
 }

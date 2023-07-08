@@ -1,13 +1,13 @@
 use crate::Config;
+use aide::{
+    axum::{routing::get, ApiRouter, IntoApiResponse},
+    openapi::OpenApi,
+};
 use axum::{
     extract::{Path, Query, State},
     http::{header::CONTENT_TYPE, HeaderMap, StatusCode},
-    response::IntoResponse,
-    routing::get,
-    Json, Router,
+    Extension, Json,
 };
-use stac::Collection;
-use stac_api::{Collections, Conformance, Root};
 use stac_api_backend::{Api, Backend, Page};
 
 /// Creates a new STAC API router.
@@ -28,7 +28,7 @@ use stac_api_backend::{Api, Backend, Page};
 /// let backend = MemoryBackend::new();
 /// let api = stac_server::api(backend, config).unwrap();
 /// ```
-pub fn api<B: Backend + 'static>(backend: B, config: Config) -> crate::Result<Router>
+pub fn api<B: Backend + 'static>(backend: B, config: Config) -> crate::Result<ApiRouter>
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
     stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
@@ -37,18 +37,18 @@ where
     let root_url = format!("http://{}", config.addr); // TODO enable https
     let catalog = config.catalog.into_catalog();
     let builder = Api::new(backend, catalog, &root_url)?;
-    Ok(Router::new()
-        .route("/", get(root))
+    Ok(ApiRouter::new()
+        .api_route("/", get(root))
+        .api_route("/conformance", get(conformance))
+        .api_route("/collections", get(collections))
+        .api_route("/collections/:collection_id", get(collection))
+        .api_route("/collections/:collection_id/items", get(items))
+        .api_route("/collections/:collection_id/items/:item_id", get(item))
         .route("/api", get(service_desc))
-        .route("/conformance", get(conformance))
-        .route("/collections", get(collections))
-        .route("/collections/:collection_id", get(collection))
-        .route("/collections/:collection_id/items", get(items))
-        .route("/collections/:collection_id/items/:item_id", get(item))
         .with_state(builder))
 }
 
-async fn root<B: Backend>(State(api): State<Api<B>>) -> Result<Json<Root>, impl IntoResponse>
+async fn root<B: Backend>(State(api): State<Api<B>>) -> impl IntoApiResponse
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
     stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
@@ -56,13 +56,18 @@ where
     api.root().await.map(Json).map_err(internal_server_error)
 }
 
-async fn service_desc() -> impl IntoResponse {
+async fn service_desc(Extension(api): Extension<OpenApi>) -> impl IntoApiResponse {
     let mut headers = HeaderMap::new();
-    let _ = headers.insert(CONTENT_TYPE, "application/vnd.oai.openapi".parse().unwrap());
-    (headers, include_str!("service_desc.yaml"))
+    let _ = headers.insert(
+        CONTENT_TYPE,
+        "application/vnd.oai.openapi+json;version=3.1"
+            .parse()
+            .unwrap(),
+    );
+    (headers, Json(api))
 }
 
-async fn conformance<B: Backend>(State(api): State<Api<B>>) -> Json<Conformance>
+async fn conformance<B: Backend>(State(api): State<Api<B>>) -> impl IntoApiResponse
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
     stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
@@ -70,9 +75,7 @@ where
     Json(api.conformance())
 }
 
-async fn collections<B: Backend>(
-    State(api): State<Api<B>>,
-) -> Result<Json<Collections>, impl IntoResponse>
+async fn collections<B: Backend>(State(api): State<Api<B>>) -> impl IntoApiResponse
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
     stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
@@ -86,7 +89,7 @@ where
 async fn collection<B: Backend>(
     State(api): State<Api<B>>,
     Path(collection_id): Path<String>,
-) -> Result<Json<Collection>, impl IntoResponse>
+) -> impl IntoApiResponse
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
     stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
@@ -109,7 +112,7 @@ async fn items<B: Backend>(
     State(api): State<Api<B>>,
     Path(collection_id): Path<String>,
     Query(query): Query<B::Query>,
-) -> Result<impl IntoResponse, impl IntoResponse>
+) -> impl IntoApiResponse
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
     stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
@@ -133,7 +136,7 @@ where
 async fn item<B: Backend>(
     State(api): State<Api<B>>,
     Path((collection_id, item_id)): Path<(String, String)>,
-) -> Result<impl IntoResponse, impl IntoResponse>
+) -> impl IntoApiResponse
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
     stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
