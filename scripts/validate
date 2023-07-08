@@ -1,11 +1,26 @@
 #!/usr/bin/env sh
 
-cargo run -- data/joplin/*.json &
+set -e
+args="data/joplin/*"
+if [ $# -eq 1 ]; then
+    if [ "$1" = "--pgstac" ]; then
+        args="$args --pgstac postgres://username:password@localhost/postgis"
+    else
+        echo "Unknown argument: $1"
+        exit 1
+    fi
+fi
+
+cargo build
+cargo run -- $args &
+server_pid=$!
+set +e
 scripts/wait-for-it.sh localhost:7822 && \
     stac-api-validator \
         --root-url http://localhost:7822 \
         --conformance core \
         --collection joplin
 status=$?
-kill %1
+set -e
+kill $server_pid
 exit $status
