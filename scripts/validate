@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+
+cargo run -- data/joplin/*.json &
+scripts/wait-for-it.sh localhost:7822 && \
+    stac-api-validator \
+        --root-url http://localhost:7822 \
+        --conformance core \
+        --collection joplin
+status=$?
+kill %1
+exit $status

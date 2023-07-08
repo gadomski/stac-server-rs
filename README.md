@@ -1,7 +1,17 @@
 # stac-server-rs
 
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/gadomski/stac-server-rs/ci.yml?branch=main&style=for-the-badge)](https://github.com/gadomski/stac-server-rs/actions/workflows/ci.yml)
+![Crates.io](https://img.shields.io/crates/l/stac-server?style=for-the-badge)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg?style=for-the-badge)](./CODE_OF_CONDUCT)
+
 A [STAC API](https://github.com/radiantearth/stac-api-spec) written in Rust.
-Currently _very_ experimental and un-featured.
+
+| Crate | Description | Badges |
+| ----- | ---- | --------- |
+| [stac-api-backend](./stac-api-backend/README.md) | Generic backend interface for STAC APIs | [![docs.rs](https://img.shields.io/docsrs/stac-api-backend?style=flat-square)](https://docs.rs/stac-api-backend/latest/stac-api-backend/) <br> [![Crates.io](https://img.shields.io/crates/v/stac-api-backend?style=flat-square)](https://crates.io/crates/stac-api-backend) |
+| [pgstac-api-backend](./pgstac-api-backend/README.md) | API backend for [pgstac](https://github.com/stac-utils/pgstac) | [![docs.rs](https://img.shields.io/docsrs/pgstac-api-backend?style=flat-square)](https://docs.rs/pgstac-api-backend/latest/pgstac_api_backend/) <br> [![Crates.io](https://img.shields.io/crates/v/pgstac-api-backend?style=flat-square)](https://crates.io/crates/pgstac-api-backend) |
+| [stac-server](./stac-server/README.md) | A STAC API server in [axum](https://github.com/tokio-rs/axum) | [![docs.rs](https://img.shields.io/docsrs/stac-server?style=flat-square)](https://docs.rs/stac-server/latest/stac_server/) <br> [![Crates.io](https://img.shields.io/crates/v/stac-server?style=flat-square)](https://crates.io/crates/stac-server)
+| [stac-server-cli](./stac-server-cli/README.md) | A command-line interface for [stac-server](./stac-server/README.md) | [![docs.rs](https://img.shields.io/docsrs/stac-server-cli?style=flat-square)](https://docs.rs/stac-server-cli/latest/stac_server_cli/) <br> [![Crates.io](https://img.shields.io/crates/v/stac-server-cli?style=flat-square)](https://crates.io/crates/stac-server-cli) |
 
 ## Usage
 
@@ -9,16 +19,11 @@ You'll need [rust](https://rustup.rs/).
 Then:
 
 ```shell
-cargo install --git https://github.com/gadomski/stac-server-rs
+cargo install stac-server-cli
 ```
 
-To start a simple memory-backed server:
-
-```shell
-stac-server
-```
-
-If you have collection and items you'd like to load into the memory backend, provide them at the command-line:
+Any collections, items, or item collections provided on the command line will be ingested into the backend on startup.
+To start a memory-backed server populated with one collection and one item from the [Planetary Computer](https://planetarycomputer.microsoft.com/):
 
 ```shell
 stac-server \
@@ -26,26 +31,11 @@ stac-server \
     https://planetarycomputer.microsoft.com/api/stac/v1/collections/3dep-seamless/items/n34w116-13
 ```
 
-### pgstac
-
-A [pgstac](https://github.com/stac-utils/pgstac) backend is provided:
+If you have a [pgstac](https://github.com/stac-utils/pgstac) database pre-populated with collections and items, you can point your server there:
 
 ```shell
 stac-server --pgstac postgres://username:password@localhost/postgis
 ```
-
-If you need a **pgstac** database with a bunch of collections and items, may we recommend [pc-mini](https://github.com/gadomski/pc-mini).
-
-## API
-
-We tried our best to separate responsibilities, so there's a couple of crates in this repo that compose together to make the command-line server:
-
-- [stac-api](./stac-api/) defines API-specific structures and helpers, e.g. endpoints and link builders
-- [stac-backend](./stac-backend/) defines how endpoint structures are built using various backends, such as an in-memory backend or [pgstac](https://github.com/stac-utils/pgstac)
-- [stac-server](./stac-server/) is the server itself, implemented using [axum](https://github.com/tokio-rs/axum)
-- [stac-server-cli](./stac-server-cli/) wraps everything together into an executable
-
-This hopefully will make it easy to, e.g., implement other backends, or use the server api in a different application (e.g. as part of another service).
 
 ## License
 

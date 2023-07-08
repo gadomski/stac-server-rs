@@ -39,6 +39,7 @@ where
     let builder = Api::new(backend, catalog, &root_url)?;
     Ok(Router::new()
         .route("/", get(root))
+        .route("/api", get(service_desc))
         .route("/conformance", get(conformance))
         .route("/collections", get(collections))
         .route("/collections/:collection_id", get(collection))
@@ -53,6 +54,12 @@ where
     stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
 {
     api.root().await.map(Json).map_err(internal_server_error)
+}
+
+async fn service_desc() -> impl IntoResponse {
+    let mut headers = HeaderMap::new();
+    let _ = headers.insert(CONTENT_TYPE, "application/vnd.oai.openapi".parse().unwrap());
+    (headers, include_str!("service_desc.yaml"))
 }
 
 async fn conformance<B: Backend>(State(api): State<Api<B>>) -> Json<Conformance>
