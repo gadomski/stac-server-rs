@@ -1,7 +1,7 @@
 # stac-server-rs
 
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/gadomski/stac-server-rs/ci.yml?branch=main&style=for-the-badge)](https://github.com/gadomski/stac-server-rs/actions/workflows/ci.yml)
-[![STAC API Validator](https://img.shields.io/github/actions/workflow/status/gadomski/stac-server-rs/validate.yml?branch=main&label=STAC+API+Validator&style=for-the-badge)](https://github.com/gadomski/stac-server-rs/actions/workflows/ci.yml)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/gadomski/stac-server-rs/ci.yaml?branch=main&style=for-the-badge)](https://github.com/gadomski/stac-server-rs/actions/workflows/ci.yaml)
+[![STAC API Validator](https://img.shields.io/github/actions/workflow/status/gadomski/stac-server-rs/validate.yaml?branch=main&label=STAC+API+Validator&style=for-the-badge)](https://github.com/gadomski/stac-server-rs/actions/workflows/ci.yaml)
 ![Crates.io](https://img.shields.io/crates/l/stac-server?style=for-the-badge)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg?style=for-the-badge)](./CODE_OF_CONDUCT)
 
@@ -38,6 +38,17 @@ If you have a [pgstac](https://github.com/stac-utils/pgstac) database pre-popula
 stac-server --pgstac postgres://username:password@localhost/postgis
 ```
 
+For more advanced setups, use a [configuration file](#configuration):
+
+```shell
+stac-server --config config.toml
+```
+
+## Configuration
+
+The [`Config` structure](https://docs.rs/stac-server/latest/stac-server-cli/struct.Config.html) defines the configuration attributes available for your server.
+This repository includes [a default configuration](./stac-server-cli/src/config.toml) that you can then customize for your use-case.
+
 ## Conformance classes
 
 The STAC API spec uses "conformance classes" to describe the functionality of a server.
@@ -49,7 +60,38 @@ These are the supported conformance classes for each backend:
 | [Features](https://github.com/radiantearth/stac-api-spec/tree/main/ogcapi-features) | ✅ | ✅ |
 | [Item search](https://github.com/radiantearth/stac-api-spec/tree/main/item-search) | ❌ | ❌ |
 
-Conformance classes are validated with [stac-api-validator](https://github.com/stac-utils/stac-api-validator) in [CI](https://github.com/gadomski/stac-server-rs/actions/workflows/validate.yml).
+## Validation
+
+Conformance classes are validated with [stac-api-validator](https://github.com/stac-utils/stac-api-validator) in [CI](https://github.com/gadomski/stac-server-rs/actions/workflows/validate.yaml).
+To validate yourself, you'll need to install **stac-api-validator**, preferably in a virtual enviroment:
+
+```shell
+pip install stac-api-validator
+```
+
+Then, with the memory backend:
+
+```shell
+scripts/validate
+```
+
+To validate the server with the pgstac backend, you'll need to start a pgstac server first:
+
+```shell
+docker-compose -f scripts/docker-compose.yaml up --detach
+scrips/validate --pgstac
+docker-compose down
+```
+
+### Conda
+
+If you like [conda](https://docs.conda.io), you can use our provided environment to validate:
+
+```shell
+conda env create -f scripts/environment.yaml
+conda activate validate
+scripts/validate
+```
 
 ## License
 

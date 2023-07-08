@@ -34,8 +34,17 @@ pub trait Backend: Send + Sync + Clone {
         collection: Collection,
     ) -> Result<Option<Collection>, Self::Error>;
 
+    /// Adds or updates a collection in this backend.
+    async fn upsert_collection(
+        &mut self,
+        collection: Collection,
+    ) -> Result<Option<Collection>, Self::Error>;
+
     /// Adds new items to this backend.
     async fn add_items(&mut self, items: Vec<Item>) -> Result<(), Self::Error>;
+
+    /// Adds or updates items in this backend.
+    async fn upsert_items(&mut self, items: Vec<Item>) -> Result<(), Self::Error>;
 
     /// Adds a new item to this backend.
     async fn add_item(&mut self, item: Item) -> Result<(), Self::Error>;

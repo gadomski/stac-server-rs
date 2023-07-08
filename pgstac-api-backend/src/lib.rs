@@ -97,13 +97,26 @@ impl Backend for PgstacBackend {
         let client = self.pool.get().await?;
         let client = Client::new(&*client);
         client.add_collection(collection).await?;
-        Ok(None)
+        Ok(None) // TODO check and retrieve the previous collection
+    }
+
+    async fn upsert_collection(&mut self, collection: Collection) -> Result<Option<Collection>> {
+        let client = self.pool.get().await?;
+        let client = Client::new(&*client);
+        client.upsert_collection(collection).await?;
+        Ok(None) // TODO check and retrieve the previous collection
     }
 
     async fn add_items(&mut self, items: Vec<Item>) -> Result<()> {
         let client = self.pool.get().await?;
         let client = Client::new(&*client);
         client.add_items(&items).await.map_err(Error::from)
+    }
+
+    async fn upsert_items(&mut self, items: Vec<Item>) -> Result<()> {
+        let client = self.pool.get().await?;
+        let client = Client::new(&*client);
+        client.upsert_items(&items).await.map_err(Error::from)
     }
 
     async fn add_item(&mut self, item: Item) -> Result<()> {

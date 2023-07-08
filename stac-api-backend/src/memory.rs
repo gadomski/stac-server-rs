@@ -136,9 +136,13 @@ impl Backend for MemoryBackend {
     }
 
     async fn add_collection(&mut self, mut collection: Collection) -> Result<Option<Collection>> {
-        collection.remove_structural_links();
+        collection.remove_structural_links(); // TODO should we handle this at the API layer?
         let mut collections = self.collections.write().unwrap(); // TODO handle poison gracefully
         Ok(collections.insert(collection.id.clone(), collection))
+    }
+
+    async fn upsert_collection(&mut self, collection: Collection) -> Result<Option<Collection>> {
+        self.add_collection(collection).await
     }
 
     async fn add_items(&mut self, items: Vec<Item>) -> Result<()> {
@@ -157,6 +161,10 @@ impl Backend for MemoryBackend {
             }
         }
         Ok(())
+    }
+
+    async fn upsert_items(&mut self, items: Vec<Item>) -> Result<()> {
+        self.add_items(items).await
     }
 
     async fn add_item(&mut self, item: Item) -> Result<()> {

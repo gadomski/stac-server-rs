@@ -25,7 +25,7 @@ where
             Value::Catalog(_) => return Err(Error::Load(value)),
             Value::Collection(collection) => {
                 backend
-                    .add_collection(collection)
+                    .upsert_collection(collection)
                     .await
                     .map_err(stac_api_backend::Error::from)?;
             }
