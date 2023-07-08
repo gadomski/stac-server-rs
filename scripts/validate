@@ -19,7 +19,9 @@ scripts/wait-for-it.sh localhost:7822 && \
     stac-api-validator \
         --root-url http://localhost:7822 \
         --conformance core \
-        --collection joplin
+        --conformance features \
+        --collection joplin \
+        --geometry '{"type":"Point","coordinates":[-94.5,37.05]}'
 status=$?
 set -e
 kill $server_pid
