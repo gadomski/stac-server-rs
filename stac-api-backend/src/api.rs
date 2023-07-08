@@ -67,7 +67,7 @@ where
     pub async fn root(&self) -> Result<Root> {
         let mut catalog = self.catalog.clone();
         let mut service_desc_link = Link::new(self.url_builder.service_desc(), "service-desc");
-        service_desc_link.r#type = Some("application/vnd.oai.openapi".to_string());
+        service_desc_link.r#type = Some("application/vnd.oai.openapi+json;version=3.1".to_string());
         catalog.links = vec![
             Link::root(self.url_builder.root()),
             Link::self_(self.url_builder.root()),

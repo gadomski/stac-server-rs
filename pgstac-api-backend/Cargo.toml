@@ -15,6 +15,7 @@ async-trait = "0.1"
 bb8 = "0.8"
 bb8-postgres = "0.8"
 pgstac = { version = "0.0.4", git = "https://github.com/gadomski/pgstac-rs" }
+schemars = "0.8"
 serde = "1"
 stac = { version = "0.5", git = "https://github.com/gadomski/stac-rs" }
 stac-api = { version = "0.2", git = "https://github.com/gadomski/stac-rs" }

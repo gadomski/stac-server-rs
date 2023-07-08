@@ -1,5 +1,6 @@
 use crate::Backend;
 use async_trait::async_trait;
+use schemars::JsonSchema;
 use serde::Deserialize;
 use stac::{Collection, Item, Link, Links};
 use stac_api::ItemCollection;
@@ -52,7 +53,7 @@ pub struct Page {
 }
 
 /// A query for the backend.
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, JsonSchema)]
 pub struct Query {
     /// The number of items to skip.
     pub skip: Option<usize>,

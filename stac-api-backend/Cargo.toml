@@ -12,10 +12,11 @@ categories = ["science", "data-structures"]
 
 [dependencies]
 async-trait = "0.1"
+schemars = "0.8"
 serde = "1"
 serde_json = "1"
-stac = { version = "0.5", git = "https://github.com/gadomski/stac-rs" }
-stac-api = { version = "0.2", git = "https://github.com/gadomski/stac-rs" }
+stac = { version = "0.5", git = "https://github.com/gadomski/stac-rs", features = ["schemars"] }
+stac-api = { version = "0.2", git = "https://github.com/gadomski/stac-rs", features = ["schemars"] }
 thiserror = "1"
 url = "2"
 

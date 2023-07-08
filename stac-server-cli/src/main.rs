@@ -1,4 +1,5 @@
-use axum::Server;
+use aide::openapi::{Info, OpenApi};
+use axum::{Extension, Server};
 use clap::Parser;
 use pgstac_api_backend::PgstacBackend;
 use stac_api_backend::MemoryBackend;
@@ -47,13 +48,13 @@ async fn main() {
     }
 
     let addr = config.server.addr.parse::<SocketAddr>().unwrap();
-    let router = match config.backend {
+    let api = match config.backend {
         BackendConfig::Memory => {
             let mut backend = MemoryBackend::new();
             stac_server_cli::load_hrefs(&mut backend, cli.hrefs)
                 .await
                 .unwrap();
-            stac_server::api(backend, config.server).unwrap()
+            stac_server::api(backend, config.server.clone()).unwrap()
         }
         BackendConfig::Pgstac(pgstac) => {
             let (_, _) = tokio_postgres::connect(&pgstac.config, tokio_postgres::NoTls)
@@ -63,13 +64,24 @@ async fn main() {
             stac_server_cli::load_hrefs(&mut backend, cli.hrefs)
                 .await
                 .unwrap();
-            stac_server::api(backend, config.server).unwrap()
+            stac_server::api(backend, config.server.clone()).unwrap()
         }
+    };
+    let mut open_api = OpenApi {
+        info: Info {
+            description: Some(config.server.catalog.description),
+            ..Info::default()
+        },
+        ..OpenApi::default()
     };
 
     println!("Serving on http://{}", addr);
     Server::bind(&addr)
-        .serve(router.into_make_service())
+        .serve(
+            api.finish_api(&mut open_api)
+                .layer(Extension(open_api))
+                .into_make_service(),
+        )
         .await
         .unwrap();
 }

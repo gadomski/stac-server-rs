@@ -1,5 +1,6 @@
 use crate::Page;
 use async_trait::async_trait;
+use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 use stac::{Collection, Item};
 use std::error::Error;
@@ -14,7 +15,7 @@ pub trait Backend: Send + Sync + Clone {
     type Page: Page;
 
     /// The type of the query used for the items endpoint.
-    type Query: DeserializeOwned;
+    type Query: DeserializeOwned + JsonSchema;
 
     /// Returns all collections in this backend.
     async fn collections(&self) -> Result<Vec<Collection>, Self::Error>;
