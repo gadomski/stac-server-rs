@@ -22,7 +22,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: conda-${{ hashFiles('scripts/environment.yml') }}
+          key: conda-${{ hashFiles('scripts/environment.yaml') }}
       - name: Set up Conda
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -58,7 +58,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: conda-${{ hashFiles('scripts/environment.yml') }}
+          key: conda-${{ hashFiles('scripts/environment.yaml') }}
       - name: Set up Conda
         uses: conda-incubator/setup-miniconda@v2
         with:
