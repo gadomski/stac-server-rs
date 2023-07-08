@@ -80,7 +80,7 @@ To validate the server with the pgstac backend, you'll need to start a pgstac se
 ```shell
 docker-compose -f scripts/docker-compose.yaml up --detach
 scrips/validate --pgstac
-docker-compose down
+docker-compose -f scripts/docker-compose.yaml down
 ```
 
 ### Conda
