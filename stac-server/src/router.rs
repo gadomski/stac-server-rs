@@ -8,6 +8,7 @@ use axum::{
     http::{header::CONTENT_TYPE, HeaderMap, StatusCode},
     Extension, Json,
 };
+use stac_api::{GetItems, Items};
 use stac_api_backend::{Api, Backend, Page};
 
 /// Creates a new STAC API router.
@@ -32,7 +33,6 @@ pub fn api<B: Backend + 'static>(backend: B, config: Config) -> crate::Result<Ap
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
     stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
-    B::Query: Send + Sync,
 {
     let root_url = format!("http://{}", config.addr); // TODO enable https
     let catalog = config.catalog.into_catalog();
@@ -111,25 +111,30 @@ where
 async fn items<B: Backend>(
     State(api): State<Api<B>>,
     Path(collection_id): Path<String>,
-    Query(query): Query<B::Query>,
+    Query(get_items): Query<GetItems>,
 ) -> impl IntoApiResponse
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
     stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
 {
-    if let Some(items) = api
-        .items(&collection_id, query)
-        .await
-        .map_err(internal_server_error)?
-    {
-        let mut headers = HeaderMap::new();
-        let _ = headers.insert(CONTENT_TYPE, "application/geo+json".parse().unwrap());
-        return Ok((headers, Json(items)));
-    } else {
-        return Err((
-            StatusCode::NOT_FOUND,
-            format!("no collection with id={}", collection_id),
-        ));
+    match Items::try_from(get_items) {
+        Ok(items) => {
+            if let Some(items) = api
+                .items(&collection_id, items)
+                .await
+                .map_err(internal_server_error)?
+            {
+                let mut headers = HeaderMap::new();
+                let _ = headers.insert(CONTENT_TYPE, "application/geo+json".parse().unwrap());
+                return Ok((headers, Json(items)));
+            } else {
+                return Err((
+                    StatusCode::NOT_FOUND,
+                    format!("no collection with id={}", collection_id),
+                ));
+            }
+        }
+        Err(err) => Err((StatusCode::BAD_REQUEST, format!("invalid query: {}", err))),
     }
 }
 

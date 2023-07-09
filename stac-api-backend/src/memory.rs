@@ -1,9 +1,7 @@
 use crate::Backend;
 use async_trait::async_trait;
-use schemars::JsonSchema;
-use serde::Deserialize;
 use stac::{Collection, Item, Link, Links};
-use stac_api::ItemCollection;
+use stac_api::{ItemCollection, Items};
 use std::{
     collections::BTreeMap,
     sync::{Arc, RwLock},
@@ -20,6 +18,9 @@ pub enum Error {
 
     #[error("no collection set on item with id={}", .0.id)]
     NoCollection(Item),
+
+    #[error(transparent)]
+    ParseIntError(#[from] std::num::ParseIntError),
 
     #[error(transparent)]
     Stac(#[from] stac::Error),
@@ -52,16 +53,6 @@ pub struct Page {
     take: usize,
 }
 
-/// A query for the backend.
-#[derive(Debug, Deserialize, Default, JsonSchema)]
-pub struct Query {
-    /// The number of items to skip.
-    pub skip: Option<usize>,
-
-    /// The number of items to return.
-    pub take: Option<usize>,
-}
-
 impl MemoryBackend {
     /// Creates a new memory backend.
     ///
@@ -84,7 +75,6 @@ impl MemoryBackend {
 impl Backend for MemoryBackend {
     type Error = Error;
     type Page = Page;
-    type Query = Query;
 
     async fn collections(&self) -> Result<Vec<Collection>> {
         let collections = self.collections.read().unwrap();
@@ -96,9 +86,26 @@ impl Backend for MemoryBackend {
         Ok(collections.get(id).cloned())
     }
 
-    async fn items(&self, id: &str, query: Query) -> Result<Option<Page>> {
-        let skip = query.skip.unwrap_or_default();
-        let take = query.take.unwrap_or(self.take);
+    async fn items(&self, id: &str, items: Items) -> Result<Option<Page>> {
+        // TODO support the other query parameters
+        let skip = items
+            .additional_fields
+            .get("skip")
+            .and_then(|s| s.as_str())
+            .map(|s| s.parse())
+            .unwrap_or(Ok(0))?;
+        let take = items
+            .additional_fields
+            .get("take")
+            .and_then(|s| s.as_str())
+            .map(|s| s.parse())
+            .unwrap_or(Ok(self.take))?;
+        if items.bbox.is_some() {
+            todo!()
+        }
+        if items.datetime.is_some() {
+            todo!()
+        }
         let items = self.items.read().unwrap();
         if let Some(items) = items.get(id) {
             let number_matched = items.len();
