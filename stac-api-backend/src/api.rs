@@ -2,8 +2,8 @@ use crate::{Backend, Error, Page, Result};
 use serde_json::Value;
 use stac::{Catalog, Collection, Link};
 use stac_api::{
-    Collections, Conformance, Item, ItemCollection, Root, UrlBuilder, COLLECTIONS_URI, CORE_URI,
-    FEATURES_URI, GEOJSON_URI, OGC_API_FEATURES_URI,
+    Collections, Conformance, Item, ItemCollection, Items, Root, UrlBuilder, COLLECTIONS_URI,
+    CORE_URI, FEATURES_URI, GEOJSON_URI, OGC_API_FEATURES_URI,
 };
 
 /// A structure for generating STAC API endpoints.
@@ -192,8 +192,8 @@ where
     /// let item = api.items("collection-id", Default::default()).await.unwrap();
     /// # });
     /// ```
-    pub async fn items(&self, id: &str, query: B::Query) -> Result<Option<ItemCollection>> {
-        if let Some(page) = self.backend.items(id, query).await? {
+    pub async fn items(&self, id: &str, items: Items) -> Result<Option<ItemCollection>> {
+        if let Some(page) = self.backend.items(id, items).await? {
             let url = self.url_builder.items(id)?;
             let mut item_collection = page.into_item_collection(url.clone())?;
             item_collection
@@ -278,12 +278,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::Api;
-    use crate::{
-        memory::{MemoryBackend, Query},
-        Backend,
-    };
+    use crate::{memory::MemoryBackend, Backend};
     use stac::{Catalog, Collection, Item, Links};
-    use stac_api::{COLLECTIONS_URI, CORE_URI, FEATURES_URI, GEOJSON_URI, OGC_API_FEATURES_URI};
+    use stac_api::{
+        Items, COLLECTIONS_URI, CORE_URI, FEATURES_URI, GEOJSON_URI, OGC_API_FEATURES_URI,
+    };
     use stac_validate::Validate;
 
     fn api() -> Api<MemoryBackend> {
@@ -421,7 +420,7 @@ mod tests {
             .unwrap();
         let item = Item::new("item-id").collection("an-id");
         api.backend.add_items(vec![item]).await.unwrap();
-        let items = api.items("an-id", Query::default()).await.unwrap().unwrap();
+        let items = api.items("an-id", Items::default()).await.unwrap().unwrap();
         assert_eq!(
             items.link("root").unwrap().href,
             "http://stac-api-backend.test/"
@@ -464,17 +463,14 @@ mod tests {
         let item_a = Item::new("item-a").collection("an-id");
         let item_b = Item::new("item-b").collection("an-id");
         api.backend.add_items(vec![item_a, item_b]).await.unwrap();
-        let items = api
-            .items(
-                "an-id",
-                Query {
-                    skip: Some(0),
-                    take: Some(1),
-                },
-            )
-            .await
-            .unwrap()
-            .unwrap();
+        let mut items = Items::default();
+        let _ = items
+            .additional_fields
+            .insert("skip".to_string(), "0".to_string().into());
+        let _ = items
+            .additional_fields
+            .insert("take".to_string(), "1".to_string().into());
+        let items = api.items("an-id", items).await.unwrap().unwrap();
         assert_eq!(items.items.len(), 1);
         assert_eq!(
             items.link("next").unwrap().href,
