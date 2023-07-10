@@ -8,7 +8,8 @@ use axum::{
     http::{header::CONTENT_TYPE, HeaderMap, StatusCode},
     Extension, Json,
 };
-use stac_api::{GetItems, Items};
+use stac::Link;
+use stac_api::{GetItems, Items, Root};
 use stac_api_backend::{Api, Backend, Page};
 
 /// Creates a new STAC API router.
@@ -48,12 +49,16 @@ where
         .with_state(builder))
 }
 
-async fn root<B: Backend>(State(api): State<Api<B>>) -> impl IntoApiResponse
+async fn root<B: Backend>(State(api): State<Api<B>>) -> Result<Json<Root>, (StatusCode, String)>
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
     stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
 {
-    api.root().await.map(Json).map_err(internal_server_error)
+    let mut root = api.root().await.map_err(internal_server_error)?;
+    let mut link = Link::new(api.url_builder.service_desc(), "service-desc");
+    link.r#type = Some("application/vnd.oai.openapi+json;version=3.1".to_string());
+    root.catalog.links.push(link);
+    Ok(Json(root))
 }
 
 async fn service_desc(Extension(api): Extension<OpenApi>) -> impl IntoApiResponse {

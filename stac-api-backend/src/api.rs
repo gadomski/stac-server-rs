@@ -12,8 +12,10 @@ pub struct Api<B: Backend> {
     /// The backend for this API.
     pub backend: B,
 
+    /// The url builder for this api.
+    pub url_builder: UrlBuilder,
+
     catalog: Catalog,
-    url_builder: UrlBuilder,
 }
 
 impl<B: Backend> Api<B>
@@ -48,6 +50,9 @@ where
     /// Returns the root endpoint, as defined by
     /// <https://github.com/radiantearth/stac-api-spec/tree/main/core#endpoints>.
     ///
+    /// Note that the server is responsible for adding the service-desc link,
+    /// since we can't know the media type down here in the backend.
+    ///
     /// # Examples
     ///
     /// ```
@@ -66,14 +71,11 @@ where
     /// ```
     pub async fn root(&self) -> Result<Root> {
         let mut catalog = self.catalog.clone();
-        let mut service_desc_link = Link::new(self.url_builder.service_desc(), "service-desc");
-        service_desc_link.r#type = Some("application/vnd.oai.openapi+json;version=3.1".to_string());
         catalog.links = vec![
             Link::root(self.url_builder.root()),
             Link::self_(self.url_builder.root()),
             Link::new(self.url_builder.conformance(), "conformance").json(),
             Link::new(self.url_builder.collections(), "data").json(),
-            service_desc_link,
         ];
         for collection in self.backend.collections().await? {
             catalog
@@ -338,11 +340,6 @@ mod tests {
             conformance_link.r#type.as_ref().unwrap(),
             "application/json"
         );
-
-        let service_desc_link = catalog.link("service-desc").unwrap();
-        assert_eq!(service_desc_link.href, "http://stac-api-backend.test/api");
-
-        // TODO add service-doc
     }
 
     #[tokio::test]
