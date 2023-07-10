@@ -1,10 +1,8 @@
-use aide::openapi::{Info, OpenApi};
-use axum::{Extension, Server};
 use clap::Parser;
 use pgstac_api_backend::PgstacBackend;
 use stac_api_backend::MemoryBackend;
 use stac_server_cli::{BackendConfig, Config};
-use std::{net::SocketAddr, path::PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -47,14 +45,14 @@ async fn main() {
         config.backend.set_pgstac_config(pgstac);
     }
 
-    let addr = config.server.addr.parse::<SocketAddr>().unwrap();
-    let api = match config.backend {
+    match config.backend {
         BackendConfig::Memory => {
             let mut backend = MemoryBackend::new();
             stac_server_cli::load_hrefs(&mut backend, cli.hrefs)
                 .await
                 .unwrap();
-            stac_server::api(backend, config.server.clone()).unwrap()
+            println!("Serving on http://{}", config.server.addr);
+            stac_server::serve(backend, config.server).await.unwrap()
         }
         BackendConfig::Pgstac(pgstac) => {
             let (_, _) = tokio_postgres::connect(&pgstac.config, tokio_postgres::NoTls)
@@ -64,24 +62,8 @@ async fn main() {
             stac_server_cli::load_hrefs(&mut backend, cli.hrefs)
                 .await
                 .unwrap();
-            stac_server::api(backend, config.server.clone()).unwrap()
+            println!("Serving on http://{}", config.server.addr);
+            stac_server::serve(backend, config.server).await.unwrap()
         }
     };
-    let mut open_api = OpenApi {
-        info: Info {
-            description: Some(config.server.catalog.description),
-            ..Info::default()
-        },
-        ..OpenApi::default()
-    };
-
-    println!("Serving on http://{}", addr);
-    Server::bind(&addr)
-        .serve(
-            api.finish_api(&mut open_api)
-                .layer(Extension(open_api))
-                .into_make_service(),
-        )
-        .await
-        .unwrap();
 }

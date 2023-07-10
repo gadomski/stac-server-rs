@@ -13,6 +13,7 @@ categories = ["science", "data-structures"]
 [dependencies]
 aide = { version = "0.11", features = ["axum"] }
 axum = "0.6"
+hyper = "0.14"
 serde = { version = "1", features = ["derive"] }
 stac = { version = "0.5", git = "https://github.com/gadomski/stac-rs", features = ["schemars"] }
 stac-api = { version = "0.2", git = "https://github.com/gadomski/stac-rs", features = ["schemars"] }
