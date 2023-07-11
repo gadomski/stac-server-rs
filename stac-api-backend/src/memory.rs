@@ -86,30 +86,53 @@ impl Backend for MemoryBackend {
         Ok(collections.get(id).cloned())
     }
 
-    async fn items(&self, id: &str, items: Items) -> Result<Option<Page>> {
-        // TODO support the other query parameters
-        let skip = items
+    async fn items(&self, id: &str, query: Items) -> Result<Option<Page>> {
+        let skip = query
             .additional_fields
             .get("skip")
             .and_then(|s| s.as_str())
             .map(|s| s.parse())
             .unwrap_or(Ok(0))?;
-        let take = items
+        let mut take = query
             .additional_fields
             .get("take")
             .and_then(|s| s.as_str())
             .map(|s| s.parse())
             .unwrap_or(Ok(self.take))?;
-        if items.bbox.is_some() {
-            todo!()
-        }
-        if items.datetime.is_some() {
-            todo!()
+        if let Some(limit) = query.limit {
+            let limit: usize = limit.try_into()?;
+            if limit < take {
+                take = limit;
+            }
         }
         let items = self.items.read().unwrap();
         if let Some(items) = items.get(id) {
             let number_matched = items.len();
-            let items: Vec<_> = items.iter().cloned().skip(skip).take(take).collect();
+            let bbox = query
+                .bbox
+                .as_ref()
+                .map(|bbox| stac::geo::bbox(bbox))
+                .transpose()?;
+            let datetime = query
+                .datetime
+                .as_ref()
+                .map(|datetime| stac::datetime::parse(datetime))
+                .transpose()?;
+            let items: Vec<_> = items
+                .iter()
+                .filter(|item| {
+                    bbox.map(|bbox| item.intersects_bbox(bbox).unwrap_or(false))
+                        .unwrap_or(true)
+                        && datetime
+                            .map(|(start, end)| {
+                                item.intersects_datetimes(start, end).unwrap_or(false)
+                            })
+                            .unwrap_or(true)
+                })
+                .cloned()
+                .skip(skip)
+                .take(take)
+                .collect();
             Ok(Some(Page {
                 items,
                 number_matched,
@@ -151,6 +174,22 @@ impl Backend for MemoryBackend {
 
     async fn upsert_collection(&mut self, collection: Collection) -> Result<Option<Collection>> {
         self.add_collection(collection).await
+    }
+
+    async fn delete_collection(&mut self, id: &str) -> Result<()> {
+        {
+            let mut items = self.items.write().unwrap();
+            let _ = items.remove(id);
+        }
+        {
+            let mut collections = self.collections.write().unwrap();
+            if collections.contains_key(id) {
+                let _ = collections.remove(id);
+                Ok(())
+            } else {
+                Err(Error::CollectionNotFound(id.to_string()))
+            }
+        }
     }
 
     async fn add_items(&mut self, items: Vec<Item>) -> Result<()> {

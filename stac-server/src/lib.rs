@@ -43,9 +43,6 @@ pub use {
 /// Crate-specific result type.
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[cfg(test)]
-use tokio_test as _;
-
 /// Start a server.
 pub async fn serve<B>(backend: B, config: Config) -> Result<()>
 where
@@ -55,20 +52,16 @@ where
         From<<<B as stac_api_backend::Backend>::Page as stac_api_backend::Page>::Error>,
 {
     let addr = config.addr.parse::<std::net::SocketAddr>()?;
-    let mut open_api = aide::openapi::OpenApi {
-        info: aide::openapi::Info {
-            description: Some(config.catalog.description.clone()),
-            ..aide::openapi::Info::default()
-        },
-        ..aide::openapi::OpenApi::default()
-    };
     let api = api(backend, config)?;
     axum::Server::bind(&addr)
-        .serve(
-            api.finish_api(&mut open_api)
-                .layer(axum::Extension(open_api))
-                .into_make_service(),
-        )
+        .serve(api.into_make_service())
         .await
         .map_err(Error::from)
 }
+
+// Needed for integration tests.
+#[cfg(test)]
+use {
+    futures_util as _, geojson as _, pgstac_api_backend as _, stac_async as _, tokio_postgres as _,
+    tokio_test as _,
+};

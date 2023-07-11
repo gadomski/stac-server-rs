@@ -1,12 +1,12 @@
 use crate::Config;
 use aide::{
     axum::{routing::get, ApiRouter, IntoApiResponse},
-    openapi::OpenApi,
+    openapi::{Info, OpenApi},
 };
 use axum::{
     extract::{Path, Query, State},
     http::{header::CONTENT_TYPE, HeaderMap, StatusCode},
-    Extension, Json,
+    Extension, Json, Router,
 };
 use stac::Link;
 use stac_api::{GetItems, Items, Root};
@@ -30,15 +30,22 @@ use stac_api_backend::{Api, Backend, Page};
 /// let backend = MemoryBackend::new();
 /// let api = stac_server::api(backend, config).unwrap();
 /// ```
-pub fn api<B: Backend + 'static>(backend: B, config: Config) -> crate::Result<ApiRouter>
+pub fn api<B: Backend + 'static>(backend: B, config: Config) -> crate::Result<Router>
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
     stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
 {
     let root_url = format!("http://{}", config.addr); // TODO enable https
+    let mut open_api = OpenApi {
+        info: Info {
+            description: Some(config.catalog.description.clone()),
+            ..Info::default()
+        },
+        ..OpenApi::default()
+    };
     let catalog = config.catalog.into_catalog();
     let builder = Api::new(backend, catalog, &root_url)?;
-    Ok(ApiRouter::new()
+    let router = ApiRouter::new()
         .api_route("/", get(root))
         .api_route("/conformance", get(conformance))
         .api_route("/collections", get(collections))
@@ -46,7 +53,8 @@ where
         .api_route("/collections/:collection_id/items", get(items))
         .api_route("/collections/:collection_id/items/:item_id", get(item))
         .route("/api", get(service_desc))
-        .with_state(builder))
+        .with_state(builder);
+    Ok(router.finish_api(&mut open_api).layer(Extension(open_api)))
 }
 
 async fn root<B: Backend>(State(api): State<Api<B>>) -> Result<Json<Root>, (StatusCode, String)>
