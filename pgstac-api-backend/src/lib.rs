@@ -132,6 +132,13 @@ impl Backend for PgstacBackend {
         Ok(None) // TODO check and retrieve the previous collection
     }
 
+    async fn delete_collection(&mut self, id: &str) -> Result<()> {
+        let client = self.pool.get().await?;
+        let client = Client::new(&*client);
+        client.delete_collection(id).await?;
+        Ok(())
+    }
+
     async fn add_items(&mut self, items: Vec<Item>) -> Result<()> {
         let client = self.pool.get().await?;
         let client = Client::new(&*client);

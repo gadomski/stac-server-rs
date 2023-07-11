@@ -60,6 +60,18 @@ These are the supported conformance classes for each backend:
 | [Features](https://github.com/radiantearth/stac-api-spec/tree/main/ogcapi-features) | ✅ | ✅ |
 | [Item search](https://github.com/radiantearth/stac-api-spec/tree/main/item-search) | ❌ | ❌ |
 
+## Testing
+
+In addition to unit tests, **stac-server** comes with some integration tests for both the memory and **pgstac** backends.
+The **pgstac** test is ignored by default, since it requires a running **pgstac** database.
+To run the **pgstac** integration test:
+
+```shell
+docker-compose up -d
+cargo test -- --ignored
+docker-compose down
+```
+
 ## Validation
 
 Conformance classes are validated with [stac-api-validator](https://github.com/stac-utils/stac-api-validator) in [CI](https://github.com/gadomski/stac-server-rs/actions/workflows/validate.yaml).
@@ -78,9 +90,9 @@ scripts/validate
 To validate the server with the pgstac backend, you'll need to start a pgstac server first:
 
 ```shell
-docker-compose -f scripts/docker-compose.yaml up --detach
+docker-compose up -d
 scrips/validate --pgstac
-docker-compose -f scripts/docker-compose.yaml down
+docker-compose down
 ```
 
 ### Conda
