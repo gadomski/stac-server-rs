@@ -1,8 +1,8 @@
-use crate::{Backend, Error, Page, Result};
+use crate::{Backend, Error, Items, Result};
 use serde_json::Value;
 use stac::{Catalog, Collection, Item, Link};
 use stac_api::{
-    Collections, Conformance, ItemCollection, Items, Root, UrlBuilder, COLLECTIONS_URI, CORE_URI,
+    Collections, Conformance, ItemCollection, Root, UrlBuilder, COLLECTIONS_URI, CORE_URI,
     FEATURES_URI, GEOJSON_URI, OGC_API_FEATURES_URI,
 };
 
@@ -21,7 +21,6 @@ pub struct Api<B: Backend> {
 impl<B: Backend> Api<B>
 where
     Error: From<<B as Backend>::Error>,
-    Error: From<<<B as Backend>::Page as Page>::Error>,
 {
     /// Creates a new endpoint generator with the given backend, catalog, and root url.
     ///
@@ -194,17 +193,34 @@ where
     /// let item = api.items("collection-id", Default::default()).await.unwrap();
     /// # });
     /// ```
-    pub async fn items(&self, id: &str, items: Items) -> Result<Option<ItemCollection>> {
-        if let Some(page) = self.backend.items(id, items).await? {
+    pub async fn items(&self, id: &str, items: Items<B::Paging>) -> Result<Option<ItemCollection>> {
+        if let Some(page) = self.backend.items(id, items.clone()).await? {
             let url = self.url_builder.items(id)?;
-            let mut item_collection = page.into_item_collection(url.clone())?;
-            item_collection
-                .links
-                .push(Link::root(self.url_builder.root()));
-            item_collection
-                .links
-                .push(Link::collection(self.url_builder.collection(id)?));
-            item_collection.links.push(Link::self_(url).geojson());
+            let mut self_url = url.clone();
+            let query = serde_qs::to_string(&items)?;
+            if !query.is_empty() {
+                self_url.set_query(Some(&query));
+            }
+            let mut item_collection = page.item_collection;
+            item_collection.links.extend([
+                Link::root(self.url_builder.root()),
+                Link::collection(self.url_builder.collection(id)?),
+                Link::self_(self_url).geojson(),
+            ]);
+            if let Some(next) = page.next {
+                let mut url = url.clone();
+                let mut items = items.clone();
+                items.paging = next;
+                url.set_query(Some(&serde_qs::to_string(&items)?));
+                item_collection.links.push(Link::new(url, "next").geojson());
+            }
+            if let Some(prev) = page.prev {
+                let mut url = url.clone();
+                let mut items = items.clone();
+                items.paging = prev;
+                url.set_query(Some(&serde_qs::to_string(&items)?));
+                item_collection.links.push(Link::new(url, "prev").geojson());
+            }
             for item in &mut item_collection.items {
                 let mut links = vec![
                     serde_json::to_value(Link::root(self.url_builder.root()))?,
@@ -280,11 +296,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::Api;
-    use crate::{memory::MemoryBackend, Backend};
-    use stac::{Catalog, Collection, Item, Links};
-    use stac_api::{
-        Items, COLLECTIONS_URI, CORE_URI, FEATURES_URI, GEOJSON_URI, OGC_API_FEATURES_URI,
+    use crate::{
+        memory::{MemoryBackend, Paging},
+        Backend, Items,
     };
+    use stac::{Catalog, Collection, Item, Links};
+    use stac_api::{COLLECTIONS_URI, CORE_URI, FEATURES_URI, GEOJSON_URI, OGC_API_FEATURES_URI};
     use stac_validate::Validate;
 
     fn api() -> Api<MemoryBackend> {
@@ -460,13 +477,9 @@ mod tests {
         let item_a = Item::new("item-a").collection("an-id");
         let item_b = Item::new("item-b").collection("an-id");
         api.backend.add_items(vec![item_a, item_b]).await.unwrap();
-        let mut items = Items::default();
-        let _ = items
-            .additional_fields
-            .insert("skip".to_string(), "0".to_string().into());
-        let _ = items
-            .additional_fields
-            .insert("take".to_string(), "1".to_string().into());
+        let mut items: Items<Paging> = Items::default();
+        items.paging.skip = Some(0);
+        items.paging.take = Some(1);
         let items = api.items("an-id", items).await.unwrap().unwrap();
         assert_eq!(items.items.len(), 1);
         assert_eq!(

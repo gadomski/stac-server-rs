@@ -1,4 +1,4 @@
-use crate::Config;
+use crate::{Config, Error};
 use aide::{
     axum::{routing::get, ApiRouter, IntoApiResponse},
     openapi::{Info, OpenApi},
@@ -9,8 +9,8 @@ use axum::{
     Extension, Json, Router,
 };
 use stac::Link;
-use stac_api::{GetItems, Items, Root};
-use stac_api_backend::{Api, Backend, Page};
+use stac_api::{GetItems, Root};
+use stac_api_backend::{Api, Backend, Items};
 
 /// Creates a new STAC API router.
 ///
@@ -33,7 +33,6 @@ use stac_api_backend::{Api, Backend, Page};
 pub fn api<B: Backend + 'static>(backend: B, config: Config) -> crate::Result<Router>
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
-    stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
 {
     let root_url = format!("http://{}", config.addr); // TODO enable https
     let mut open_api = OpenApi {
@@ -60,7 +59,6 @@ where
 async fn root<B: Backend>(State(api): State<Api<B>>) -> Result<Json<Root>, (StatusCode, String)>
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
-    stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
 {
     let mut root = api.root().await.map_err(internal_server_error)?;
     let mut link = Link::new(api.url_builder.service_desc(), "service-desc");
@@ -83,7 +81,6 @@ async fn service_desc(Extension(api): Extension<OpenApi>) -> impl IntoApiRespons
 async fn conformance<B: Backend>(State(api): State<Api<B>>) -> impl IntoApiResponse
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
-    stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
 {
     Json(api.conformance())
 }
@@ -91,7 +88,6 @@ where
 async fn collections<B: Backend>(State(api): State<Api<B>>) -> impl IntoApiResponse
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
-    stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
 {
     api.collections()
         .await
@@ -105,7 +101,6 @@ async fn collection<B: Backend>(
 ) -> impl IntoApiResponse
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
-    stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
 {
     if let Some(collection) = api
         .collection(&collection_id)
@@ -128,9 +123,15 @@ async fn items<B: Backend>(
 ) -> impl IntoApiResponse
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
-    stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
 {
-    match Items::try_from(get_items) {
+    match stac_api::Items::try_from(get_items)
+        .map_err(Error::from)
+        .and_then(|mut items| {
+            let paging: B::Paging = serde_qs::from_str(&serde_qs::to_string(&std::mem::take(
+                &mut items.additional_fields,
+            ))?)?;
+            Ok(Items { items, paging })
+        }) {
         Ok(items) => {
             if let Some(items) = api
                 .items(&collection_id, items)
@@ -157,7 +158,6 @@ async fn item<B: Backend>(
 ) -> impl IntoApiResponse
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
-    stac_api_backend::Error: From<<<B as Backend>::Page as Page>::Error>,
 {
     if let Some(item) = api
         .item(&collection_id, &item_id)

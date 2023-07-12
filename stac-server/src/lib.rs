@@ -46,10 +46,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Start a server.
 pub async fn serve<B>(backend: B, config: Config) -> Result<()>
 where
-    B: stac_api_backend::Backend + 'static,
+    B: stac_api_backend::Backend,
     stac_api_backend::Error: From<<B as stac_api_backend::Backend>::Error>,
-    stac_api_backend::Error:
-        From<<<B as stac_api_backend::Backend>::Page as stac_api_backend::Page>::Error>,
 {
     let addr = config.addr.parse::<std::net::SocketAddr>()?;
     let api = api(backend, config)?;

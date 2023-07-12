@@ -1,13 +1,13 @@
-use crate::Backend;
+use crate::{Backend, Items, Page};
 use async_trait::async_trait;
-use stac::{Collection, Item, Link, Links};
-use stac_api::{ItemCollection, Items};
+use serde::{Deserialize, Serialize};
+use stac::{Collection, Item, Links};
+use stac_api::ItemCollection;
 use std::{
     collections::BTreeMap,
     sync::{Arc, RwLock},
 };
 use thiserror::Error;
-use url::Url;
 
 const DEFAULT_TAKE: usize = 20;
 
@@ -44,13 +44,13 @@ pub struct MemoryBackend {
     take: usize,
 }
 
-/// A page from the memory backend.
-#[derive(Debug)]
-pub struct Page {
-    items: Vec<Item>,
-    number_matched: usize,
-    skip: usize,
-    take: usize,
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
+pub struct Paging {
+    /// The number of items to skip.
+    pub skip: Option<usize>,
+
+    /// The number of items to return.
+    pub take: Option<usize>,
 }
 
 impl MemoryBackend {
@@ -74,7 +74,7 @@ impl MemoryBackend {
 #[async_trait]
 impl Backend for MemoryBackend {
     type Error = Error;
-    type Page = Page;
+    type Paging = Paging;
 
     async fn collections(&self) -> Result<Vec<Collection>> {
         let collections = self.collections.read().unwrap();
@@ -86,20 +86,10 @@ impl Backend for MemoryBackend {
         Ok(collections.get(id).cloned())
     }
 
-    async fn items(&self, id: &str, query: Items) -> Result<Option<Page>> {
-        let skip = query
-            .additional_fields
-            .get("skip")
-            .and_then(|s| s.as_str())
-            .map(|s| s.parse())
-            .unwrap_or(Ok(0))?;
-        let mut take = query
-            .additional_fields
-            .get("take")
-            .and_then(|s| s.as_str())
-            .map(|s| s.parse())
-            .unwrap_or(Ok(self.take))?;
-        if let Some(limit) = query.limit {
+    async fn items(&self, id: &str, query: Items<Paging>) -> Result<Option<Page<Paging>>> {
+        let skip = query.paging.skip.unwrap_or(0);
+        let mut take = query.paging.take.unwrap_or(self.take);
+        if let Some(limit) = query.items.limit {
             let limit: usize = limit.try_into()?;
             if limit < take {
                 take = limit;
@@ -107,13 +97,14 @@ impl Backend for MemoryBackend {
         }
         let items = self.items.read().unwrap();
         if let Some(items) = items.get(id) {
-            let number_matched = items.len();
             let bbox = query
+                .items
                 .bbox
                 .as_ref()
                 .map(|bbox| stac::geo::bbox(bbox))
                 .transpose()?;
             let datetime = query
+                .items
                 .datetime
                 .as_ref()
                 .map(|datetime| stac::datetime::parse(datetime))
@@ -129,24 +120,54 @@ impl Backend for MemoryBackend {
                             })
                             .unwrap_or(true)
                 })
+                .collect();
+            let number_matched = items.len();
+            let items = items
+                .into_iter()
                 .cloned()
                 .skip(skip)
                 .take(take)
-                .collect();
+                .map(|item| item.try_into().map_err(Error::from))
+                .collect::<Result<_>>()?;
+            let mut item_collection = ItemCollection::new(items)?;
+            item_collection.number_matched = Some(number_matched.try_into()?);
+            let next = if skip + take < number_matched {
+                Some(Paging {
+                    skip: Some(skip + take),
+                    take: Some(take),
+                })
+            } else {
+                None
+            };
+            let prev = if skip > 0 {
+                if skip >= take {
+                    Some(Paging {
+                        skip: Some(skip - take),
+                        take: Some(take),
+                    })
+                } else {
+                    Some(Paging {
+                        skip: None,
+                        take: Some(take),
+                    })
+                }
+            } else {
+                None
+            };
             Ok(Some(Page {
-                items,
-                number_matched,
-                skip,
-                take,
+                item_collection,
+                next,
+                prev,
             }))
         } else {
             let collections = self.collections.read().unwrap();
             if collections.contains_key(id) {
+                let mut item_collection = ItemCollection::new(vec![])?;
+                item_collection.number_matched = Some(0);
                 Ok(Some(Page {
-                    items: vec![],
-                    number_matched: 0,
-                    skip,
-                    take,
+                    item_collection,
+                    next: None,
+                    prev: None,
                 }))
             } else {
                 Ok(None)
@@ -216,44 +237,6 @@ impl Backend for MemoryBackend {
 
     async fn add_item(&mut self, item: Item) -> Result<()> {
         self.add_items(vec![item]).await
-    }
-}
-
-impl crate::Page for Page {
-    type Error = Error;
-
-    fn into_item_collection(self, url: Url) -> Result<ItemCollection> {
-        let items = self
-            .items
-            .into_iter()
-            .map(|item| item.try_into().map_err(Error::from))
-            .collect::<Result<Vec<stac_api::Item>>>()?;
-        let mut links = Vec::new();
-        if items.len() == self.take {
-            let mut url = url.clone();
-            let _ = url
-                .query_pairs_mut()
-                .append_pair("skip", &(self.skip + items.len()).to_string())
-                .append_pair("take", &self.take.to_string());
-            links.push(Link::new(url, "next").geojson());
-        }
-        if self.skip > 0 {
-            let skip = if self.skip > self.take {
-                self.skip - self.take
-            } else {
-                0
-            };
-            let mut url = url.clone();
-            let _ = url
-                .query_pairs_mut()
-                .append_pair("skip", &skip.to_string())
-                .append_pair("take", &self.take.to_string());
-            links.push(Link::new(url, "prev").geojson());
-        }
-        let mut item_collection = ItemCollection::new(items)?;
-        item_collection.number_matched = Some(self.number_matched.try_into()?);
-        item_collection.links = links;
-        Ok(item_collection)
     }
 }
 

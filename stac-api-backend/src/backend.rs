@@ -1,17 +1,19 @@
-use crate::Page;
+use crate::{Items, Page};
 use async_trait::async_trait;
+use serde::{de::DeserializeOwned, Serialize};
 use stac::{Collection, Item};
-use stac_api::Items;
-use std::{error::Error, fmt::Debug};
+use std::fmt::Debug;
 
 /// A STAC API backend builds each STAC API endpoint.
 #[async_trait]
-pub trait Backend: Send + Sync + Clone {
+pub trait Backend: Send + Sync + Clone + 'static {
     /// The error type returned by the backend.
-    type Error: Error;
+    type Error: std::error::Error;
 
-    /// The type of the page returned by the items endpoint and by item search.
-    type Page: Page + Debug;
+    /// The paging object.
+    ///
+    /// Some might use a token, some might use a skip+take, some might do something else.
+    type Paging: Debug + Clone + Serialize + Default + DeserializeOwned + Send + Sync;
 
     /// Returns all collections in this backend.
     async fn collections(&self) -> Result<Vec<Collection>, Self::Error>;
@@ -20,7 +22,11 @@ pub trait Backend: Send + Sync + Clone {
     async fn collection(&self, id: &str) -> Result<Option<Collection>, Self::Error>;
 
     /// Returns items.
-    async fn items(&self, id: &str, items: Items) -> Result<Option<Self::Page>, Self::Error>;
+    async fn items(
+        &self,
+        id: &str,
+        items: Items<Self::Paging>,
+    ) -> Result<Option<Page<Self::Paging>>, Self::Error>;
 
     /// Returns an item.
     async fn item(&self, collection_id: &str, id: &str) -> Result<Option<Item>, Self::Error>;
