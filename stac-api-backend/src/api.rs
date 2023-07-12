@@ -1,9 +1,9 @@
 use crate::{Backend, Error, Page, Result};
 use serde_json::Value;
-use stac::{Catalog, Collection, Link};
+use stac::{Catalog, Collection, Item, Link};
 use stac_api::{
-    Collections, Conformance, Item, ItemCollection, Items, Root, UrlBuilder, COLLECTIONS_URI,
-    CORE_URI, FEATURES_URI, GEOJSON_URI, OGC_API_FEATURES_URI,
+    Collections, Conformance, ItemCollection, Items, Root, UrlBuilder, COLLECTIONS_URI, CORE_URI,
+    FEATURES_URI, GEOJSON_URI, OGC_API_FEATURES_URI,
 };
 
 /// A structure for generating STAC API endpoints.
@@ -206,7 +206,23 @@ where
                 .push(Link::collection(self.url_builder.collection(id)?));
             item_collection.links.push(Link::self_(url).geojson());
             for item in &mut item_collection.items {
-                self.add_item_links(item, id)?;
+                let mut links = vec![
+                    serde_json::to_value(Link::root(self.url_builder.root()))?,
+                    serde_json::to_value(Link::parent(self.url_builder.collection(id)?))?,
+                    serde_json::to_value(Link::collection(self.url_builder.collection(id)?))?,
+                ];
+                if let Some(item_id) = item.get("id").and_then(|value| value.as_str()) {
+                    links.push(serde_json::to_value(
+                        Link::self_(self.url_builder.item(id, item_id)?).geojson(),
+                    )?);
+                }
+                if let Some(existing_links) =
+                    item.get_mut("links").and_then(|value| value.as_array_mut())
+                {
+                    existing_links.extend(links);
+                } else {
+                    let _ = item.insert("links".to_string(), Value::Array(links));
+                }
             }
             Ok(Some(item_collection))
         } else {
@@ -234,9 +250,14 @@ where
     /// # });
     /// ```
     pub async fn item(&self, collection_id: &str, id: &str) -> Result<Option<Item>> {
-        if let Some(item) = self.backend.item(collection_id, id).await? {
-            let mut item = item.try_into()?;
-            self.add_item_links(&mut item, collection_id)?;
+        if let Some(mut item) = self.backend.item(collection_id, id).await? {
+            let collection_url = self.url_builder.collection(collection_id)?;
+            item.links.extend([
+                Link::root(self.url_builder.root()),
+                Link::parent(collection_url.clone()),
+                Link::collection(collection_url),
+                Link::self_(self.url_builder.item(collection_id, id)?).geojson(),
+            ]);
             Ok(Some(item))
         } else {
             Ok(None)
@@ -252,27 +273,6 @@ where
         collection
             .links
             .push(Link::new(self.url_builder.items(&collection.id)?, "items").geojson());
-        Ok(())
-    }
-
-    fn add_item_links(&self, item: &mut Item, collection_id: &str) -> Result<()> {
-        let mut links = vec![
-            serde_json::to_value(Link::root(self.url_builder.root()))?,
-            serde_json::to_value(Link::parent(self.url_builder.collection(collection_id)?))?,
-            serde_json::to_value(Link::collection(
-                self.url_builder.collection(collection_id)?,
-            ))?,
-        ];
-        if let Some(id) = item.get("id").and_then(|value| value.as_str()) {
-            links.push(serde_json::to_value(
-                Link::self_(self.url_builder.item(collection_id, id)?).geojson(),
-            )?);
-        }
-        if let Some(existing_links) = item.get_mut("links").and_then(|value| value.as_array_mut()) {
-            existing_links.extend(links);
-        } else {
-            let _ = item.insert("links".to_string(), Value::Array(links));
-        }
         Ok(())
     }
 }
