@@ -34,12 +34,12 @@ use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use pgstac::Client;
-use stac::{Collection, Item, Link};
-use stac_api::{ItemCollection, Items};
-use stac_api_backend::Backend;
+use serde::{Deserialize, Serialize};
+use stac::{Collection, Item};
+use stac_api::ItemCollection;
+use stac_api_backend::{Backend, Items, Page};
 use thiserror::Error;
 use tokio_postgres::tls::NoTls;
-use url::Url;
 
 /// The pgstac backend.
 #[derive(Clone, Debug)]
@@ -70,9 +70,13 @@ pub enum Error {
 /// Crate-specific result type.
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// A page of results.
-#[derive(Debug)]
-pub struct Page(pgstac::Page);
+/// Paging structure.
+#[derive(Default, Debug, Clone, Deserialize, Serialize)]
+pub struct Paging {
+    /// The paging token.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token: Option<String>,
+}
 
 impl PgstacBackend {
     /// Creates a new pgstac backend.
@@ -86,7 +90,7 @@ impl PgstacBackend {
 #[async_trait]
 impl Backend for PgstacBackend {
     type Error = Error;
-    type Page = Page;
+    type Paging = Paging;
 
     async fn collections(&self) -> Result<Vec<Collection>> {
         let client = self.pool.get().await?;
@@ -100,15 +104,29 @@ impl Backend for PgstacBackend {
         client.collection(id).await.map_err(Error::from)
     }
 
-    async fn items(&self, id: &str, items: Items) -> Result<Option<Self::Page>> {
+    async fn items(&self, id: &str, query: Items<Paging>) -> Result<Option<Page<Paging>>> {
         let client = self.pool.get().await?;
         let client = Client::new(&*client);
-        let search = items.into_search(id);
+        let mut search = query.items.into_search(id);
+        if let Some(token) = query.paging.token {
+            let _ = search
+                .additional_fields
+                .insert("token".to_string(), token.into());
+        }
         let page = client.search(search).await?;
-        if page.features.is_empty() && client.collection(id).await?.is_none() {
+        if page.features.is_empty() {
+            // TODO should we error if there's no collection?
             Ok(None)
         } else {
-            Ok(Some(Page(page)))
+            let next = page.next_token().map(|token| Paging { token: Some(token) });
+            let prev = page.prev_token().map(|token| Paging { token: Some(token) });
+            let mut item_collection = ItemCollection::new(page.features)?;
+            item_collection.context = Some(page.context);
+            Ok(Some(Page {
+                item_collection,
+                next,
+                prev,
+            }))
         }
     }
 
@@ -155,26 +173,6 @@ impl Backend for PgstacBackend {
         let client = self.pool.get().await?;
         let client = Client::new(&*client);
         client.add_item(item).await.map_err(Error::from)
-    }
-}
-
-impl stac_api_backend::Page for Page {
-    type Error = Error;
-    fn into_item_collection(self, url: Url) -> Result<ItemCollection> {
-        let mut links = vec![];
-        if let Some(next) = self.0.next_token() {
-            let mut url = url.clone();
-            let _ = url.query_pairs_mut().append_pair("token", &next);
-            links.push(Link::new(url, "next").geojson());
-        }
-        if let Some(prev) = self.0.prev_token() {
-            let mut url = url.clone();
-            let _ = url.query_pairs_mut().append_pair("token", &prev);
-            links.push(Link::new(url, "prev").geojson());
-        }
-        let mut item_collection = ItemCollection::new(self.0.features)?;
-        item_collection.links = links;
-        Ok(item_collection)
     }
 }
 

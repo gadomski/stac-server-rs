@@ -43,10 +43,13 @@
 mod api;
 mod backend;
 mod error;
+mod items;
 mod memory;
 mod page;
 
-pub use {api::Api, backend::Backend, error::Error, memory::MemoryBackend, page::Page};
+pub use {
+    api::Api, backend::Backend, error::Error, items::Items, memory::MemoryBackend, page::Page,
+};
 
 /// A crate-specific result type.
 pub type Result<T> = std::result::Result<T, Error>;

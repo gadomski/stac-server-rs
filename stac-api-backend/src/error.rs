@@ -11,6 +11,10 @@ pub enum Error {
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
 
+    /// [serde_qs::Error]
+    #[error(transparent)]
+    SerdeQs(#[from] serde_qs::Error),
+
     /// [stac::Error]
     #[error(transparent)]
     Stac(#[from] stac::Error),

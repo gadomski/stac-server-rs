@@ -15,6 +15,14 @@ pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
+    /// [serde_qs::Error]
+    #[error(transparent)]
+    SerdeQs(#[from] serde_qs::Error),
+
+    /// [stac_api::Error]
+    #[error(transparent)]
+    StacApi(#[from] stac_api::Error),
+
     /// [stac_api_backend::Error]
     #[error(transparent)]
     StacApiBackend(#[from] stac_api_backend::Error),

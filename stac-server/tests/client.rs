@@ -4,7 +4,7 @@ use geojson::{Geometry, Value};
 use pgstac_api_backend::PgstacBackend;
 use stac::{Collection, Item};
 use stac_api::Items;
-use stac_api_backend::{Backend, Error, MemoryBackend, Page};
+use stac_api_backend::{Backend, Error, MemoryBackend};
 use stac_async::ApiClient;
 use stac_server::{CatalogConfig, Config};
 use std::net::TcpListener;
@@ -28,7 +28,7 @@ async fn test<B>(mut backend: B)
 where
     B: Backend + 'static,
     Error: From<<B as Backend>::Error>,
-    Error: From<<<B as Backend>::Page as Page>::Error>,
+    <B as Backend>::Paging: Send + Sync,
 {
     if let Some(_) = backend.collection("collection-id").await.unwrap() {
         backend.delete_collection("collection-id").await.unwrap();
