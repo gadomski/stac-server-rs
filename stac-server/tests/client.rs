@@ -1,11 +1,11 @@
 use axum::Server;
 use futures_util::stream::StreamExt;
 use geojson::{Geometry, Value};
-use stac::{Collection, Item};
+use stac::{Catalog, Collection, Item};
 use stac_api::Items;
 use stac_api_backend::{Backend, Error, MemoryBackend, PgstacBackend};
 use stac_async::ApiClient;
-use stac_server::{CatalogConfig, Config};
+use stac_server::Config;
 use stac_validate::Validate;
 use std::net::TcpListener;
 
@@ -55,10 +55,7 @@ where
     let config = Config {
         addr: "127.0.0.1:7822".to_string(),
         features: true,
-        catalog: CatalogConfig {
-            id: "test-catalog".to_string(),
-            description: "A test catalog".to_string(),
-        },
+        catalog: Catalog::new("a-catalog", "A test catalog"),
     };
 
     let listener = TcpListener::bind(&config.addr).unwrap();

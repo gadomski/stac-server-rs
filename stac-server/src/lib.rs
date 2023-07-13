@@ -34,11 +34,7 @@ mod config;
 mod error;
 mod router;
 
-pub use {
-    config::{CatalogConfig, Config},
-    error::Error,
-    router::api,
-};
+pub use {config::Config, error::Error, router::api};
 
 /// Crate-specific result type.
 pub type Result<T> = std::result::Result<T, Error>;

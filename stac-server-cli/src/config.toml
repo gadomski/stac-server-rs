@@ -3,5 +3,9 @@ addr = "127.0.0.1:7822"
 features = true
 
 [server.catalog]
+type = "Catalog"
+stac_version = "1.0.0"
 id = "stac-server-rs"
 description = "An example implementation of a STAC API using stac-server-rs"
+title = "stac-server-rs"
+links = []
