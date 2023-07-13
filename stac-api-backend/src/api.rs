@@ -293,7 +293,7 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "memory"))]
 mod tests {
     use super::Api;
     use crate::{

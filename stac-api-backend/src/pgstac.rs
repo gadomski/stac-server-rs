@@ -1,35 +1,6 @@
 //! STAC API backend for pgstac.
 
-#![deny(
-    elided_lifetimes_in_paths,
-    explicit_outlives_requirements,
-    keyword_idents,
-    macro_use_extern_crate,
-    meta_variable_misuse,
-    missing_abi,
-    missing_debug_implementations,
-    missing_docs,
-    non_ascii_idents,
-    noop_method_call,
-    pointer_structural_match,
-    rust_2021_incompatible_closure_captures,
-    rust_2021_incompatible_or_patterns,
-    rust_2021_prefixes_incompatible_syntax,
-    rust_2021_prelude_collisions,
-    single_use_lifetimes,
-    trivial_casts,
-    trivial_numeric_casts,
-    unreachable_pub,
-    unsafe_code,
-    unsafe_op_in_unsafe_fn,
-    unused_crate_dependencies,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_lifetimes,
-    unused_qualifications,
-    unused_results
-)]
-
+use crate::{Backend, Items, Page};
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
@@ -37,7 +8,6 @@ use pgstac::Client;
 use serde::{Deserialize, Serialize};
 use stac::{Collection, Item};
 use stac_api::ItemCollection;
-use stac_api_backend::{Backend, Items, Page};
 use thiserror::Error;
 use tokio_postgres::tls::NoTls;
 
@@ -67,8 +37,7 @@ pub enum Error {
     TokioPostgres(#[from] tokio_postgres::Error),
 }
 
-/// Crate-specific result type.
-pub type Result<T> = std::result::Result<T, Error>;
+type Result<T> = std::result::Result<T, Error>;
 
 /// Paging structure.
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
@@ -176,8 +145,8 @@ impl Backend for PgstacBackend {
     }
 }
 
-impl From<Error> for stac_api_backend::Error {
+impl From<Error> for crate::Error {
     fn from(value: Error) -> Self {
-        stac_api_backend::Error::Backend(Box::new(value))
+        crate::Error::Backend(Box::new(value))
     }
 }
