@@ -10,14 +10,22 @@ license = "MIT OR Apache-2.0"
 keywords = ["geospatial", "stac", "metadata", "geo", "raster"]
 categories = ["science", "data-structures"]
 
+[features]
+memory = ["stac/geo"]
+pgstac = ["dep:bb8", "dep:bb8-postgres", "dep:pgstac", "dep:tokio-postgres"]
+
 [dependencies]
 async-trait = "0.1"
+bb8 = { version = "0.8", optional = true }
+bb8-postgres = { version = "0.8", optional = true }
+pgstac = { version = "0.0.4", git = "https://github.com/gadomski/pgstac-rs", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_qs = "0.12"
-stac = { version = "0.5", git = "https://github.com/gadomski/stac-rs", features = ["schemars", "geo"] }
+stac = { version = "0.5", git = "https://github.com/gadomski/stac-rs", features = ["schemars"] }
 stac-api = { version = "0.2", git = "https://github.com/gadomski/stac-rs", features = ["schemars"] }
 thiserror = "1"
+tokio-postgres = { version = "0.7", optional = true }
 url = "2"
 
 [dev-dependencies]

@@ -1,10 +1,9 @@
 use axum::Server;
 use futures_util::stream::StreamExt;
 use geojson::{Geometry, Value};
-use pgstac_api_backend::PgstacBackend;
 use stac::{Collection, Item};
 use stac_api::Items;
-use stac_api_backend::{Backend, Error, MemoryBackend};
+use stac_api_backend::{Backend, Error, MemoryBackend, PgstacBackend};
 use stac_async::ApiClient;
 use stac_server::{CatalogConfig, Config};
 use std::net::TcpListener;

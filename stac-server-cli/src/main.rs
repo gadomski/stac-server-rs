@@ -1,6 +1,5 @@
 use clap::Parser;
-use pgstac_api_backend::PgstacBackend;
-use stac_api_backend::MemoryBackend;
+use stac_api_backend::{MemoryBackend, PgstacBackend};
 use stac_server_cli::{BackendConfig, Config};
 use std::path::PathBuf;
 
