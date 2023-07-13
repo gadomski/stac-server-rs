@@ -54,6 +54,7 @@ where
     backend.add_items(items).await.unwrap();
     let config = Config {
         addr: "127.0.0.1:7822".to_string(),
+        features: true,
         catalog: CatalogConfig {
             id: "test-catalog".to_string(),
             description: "A test catalog".to_string(),

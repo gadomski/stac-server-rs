@@ -5,8 +5,12 @@ use stac::Catalog;
 #[derive(Clone, Debug, Deserialize)]
 pub struct Config {
     /// The IP address of the server.
-    #[serde(default = "default_addr")]
     pub addr: String,
+
+    /// Should this server support features?
+    ///
+    /// Note that we don't allow just collections, because why.
+    pub features: bool,
 
     /// The catalog configuration.
     pub catalog: CatalogConfig,
@@ -35,8 +39,4 @@ impl CatalogConfig {
     pub fn into_catalog(self) -> Catalog {
         Catalog::new(self.id, self.description)
     }
-}
-
-fn default_addr() -> String {
-    "localhost:7822".to_string()
 }

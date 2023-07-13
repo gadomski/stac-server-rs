@@ -15,6 +15,9 @@ pub struct Api<B: Backend> {
     /// The url builder for this api.
     pub url_builder: UrlBuilder,
 
+    /// Should this api support features?
+    pub features: bool,
+
     catalog: Catalog,
 }
 
@@ -35,13 +38,14 @@ where
     /// let api = Api::new(
     ///     MemoryBackend::new(),
     ///     Catalog::new("an-id", "a description"),
-    ///     "http://stac-api-backend.test")
+    ///     "http://stac-api-backend.test",)
     /// .unwrap();
     /// ```
     pub fn new(backend: B, catalog: Catalog, url: &str) -> Result<Api<B>> {
         Ok(Api {
             backend,
             catalog,
+            features: true,
             url_builder: UrlBuilder::new(url)?,
         })
     }
@@ -74,8 +78,12 @@ where
             Link::root(self.url_builder.root()),
             Link::self_(self.url_builder.root()),
             Link::new(self.url_builder.conformance(), "conformance").json(),
-            Link::new(self.url_builder.collections(), "data").json(),
         ];
+        if self.features {
+            catalog
+                .links
+                .push(Link::new(self.url_builder.collections(), "data").json());
+        }
         for collection in self.backend.collections().await? {
             catalog
                 .links
@@ -103,15 +111,16 @@ where
     /// let conformance = api.conformance();
     /// ```
     pub fn conformance(&self) -> Conformance {
-        Conformance {
-            conforms_to: vec![
-                CORE_URI.to_string(),
+        let mut conforms_to = vec![CORE_URI.to_string()];
+        if self.features {
+            conforms_to.extend([
                 FEATURES_URI.to_string(),
                 COLLECTIONS_URI.to_string(),
                 OGC_API_FEATURES_URI.to_string(),
                 GEOJSON_URI.to_string(),
-            ],
+            ])
         }
+        Conformance { conforms_to }
     }
 
     /// Returns collections.
@@ -510,5 +519,13 @@ mod tests {
     async fn collection_404() {
         let api = api();
         assert_eq!(api.collection("an-id").await.unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn no_feature() {
+        let mut api = api();
+        api.features = false;
+        let root = api.root().await.unwrap();
+        assert_eq!(root.catalog.link("data"), None);
     }
 }

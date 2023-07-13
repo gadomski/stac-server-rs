@@ -22,6 +22,7 @@ use stac_api_backend::{Api, Backend, Items};
 ///
 /// let config = Config {
 ///     addr: "http://localhost:7822".to_string(),
+///     features: true,
 ///     catalog: CatalogConfig {
 ///         id: "an-id".to_string(),
 ///         description: "a description".to_string(),
@@ -43,17 +44,32 @@ where
         ..OpenApi::default()
     };
     let catalog = config.catalog.into_catalog();
-    let builder = Api::new(backend, catalog, &root_url)?;
-    let router = ApiRouter::new()
+    let mut builder = Api::new(backend, catalog, &root_url)?;
+    builder.features = config.features;
+    let mut router = ApiRouter::new()
         .api_route("/", get(root))
-        .api_route("/conformance", get(conformance))
-        .api_route("/collections", get(collections))
-        .api_route("/collections/:collection_id", get(collection))
-        .api_route("/collections/:collection_id/items", get(items))
-        .api_route("/collections/:collection_id/items/:item_id", get(item))
+        .api_route("/conformance", get(conformance));
+    if builder.features {
+        router = router
+            .api_route("/collections", get(collections))
+            .api_route("/collections/:collection_id", get(collection))
+            .api_route("/collections/:collection_id/items", get(items))
+            .api_route("/collections/:collection_id/items/:item_id", get(item));
+    } else {
+        router = router
+            .api_route("/collections", get(not_implemented))
+            .api_route("/collections/:collection_id", get(not_implemented))
+            .api_route("/collections/:collection_id/items", get(not_implemented))
+            .api_route(
+                "/collections/:collection_id/items/:item_id",
+                get(not_implemented),
+            );
+    }
+    Ok(router
         .route("/api", get(service_desc))
-        .with_state(builder);
-    Ok(router.finish_api(&mut open_api).layer(Extension(open_api)))
+        .with_state(builder)
+        .finish_api(&mut open_api)
+        .layer(Extension(open_api)))
 }
 
 async fn root<B: Backend>(State(api): State<Api<B>>) -> Result<Json<Root>, (StatusCode, String)>
@@ -185,6 +201,10 @@ fn internal_server_error(err: stac_api_backend::Error) -> (StatusCode, String) {
     )
 }
 
+async fn not_implemented() -> (StatusCode, String) {
+    (StatusCode::NOT_IMPLEMENTED, "not implemented".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{CatalogConfig, Config};
@@ -196,9 +216,10 @@ mod tests {
     use stac_api_backend::{Backend, MemoryBackend};
     use tower::ServiceExt;
 
-    async fn test_config() -> Config {
+    fn test_config() -> Config {
         Config {
             addr: "http://localhost:7822".to_string(),
+            features: true,
             catalog: CatalogConfig {
                 id: "test-catalog".to_string(),
                 description: "A description".to_string(),
@@ -208,7 +229,7 @@ mod tests {
 
     #[tokio::test]
     async fn landing_page() {
-        let api = super::api(MemoryBackend::new(), test_config().await).unwrap();
+        let api = super::api(MemoryBackend::new(), test_config()).unwrap();
         let response = api
             .oneshot(
                 Request::builder()
@@ -224,7 +245,7 @@ mod tests {
 
     #[tokio::test]
     async fn collections() {
-        let api = super::api(MemoryBackend::new(), test_config().await).unwrap();
+        let api = super::api(MemoryBackend::new(), test_config()).unwrap();
         let response = api
             .oneshot(
                 Request::builder()
@@ -240,7 +261,7 @@ mod tests {
 
     #[tokio::test]
     async fn conformance() {
-        let api = super::api(MemoryBackend::new(), test_config().await).unwrap();
+        let api = super::api(MemoryBackend::new(), test_config()).unwrap();
         let response = api
             .oneshot(
                 Request::builder()
@@ -261,7 +282,7 @@ mod tests {
             .add_collection(Collection::new("an-id", "a description"))
             .await
             .unwrap();
-        let api = super::api(backend, test_config().await).unwrap();
+        let api = super::api(backend, test_config()).unwrap();
         let response = api
             .oneshot(
                 Request::builder()
@@ -282,7 +303,7 @@ mod tests {
             .add_collection(Collection::new("an-id", "a description"))
             .await
             .unwrap();
-        let api = super::api(backend, test_config().await).unwrap();
+        let api = super::api(backend, test_config()).unwrap();
         let response = api
             .oneshot(
                 Request::builder()
@@ -311,7 +332,7 @@ mod tests {
             .add_items(vec![Item::new("item-id").collection("an-id")])
             .await
             .unwrap();
-        let api = super::api(backend, test_config().await).unwrap();
+        let api = super::api(backend, test_config()).unwrap();
         let response = api
             .oneshot(
                 Request::builder()
@@ -327,5 +348,72 @@ mod tests {
             response.headers().get(CONTENT_TYPE).unwrap(),
             "application/geo+json"
         );
+    }
+
+    #[tokio::test]
+    async fn no_features() {
+        let mut config = test_config();
+        config.features = false;
+        let api = super::api(MemoryBackend::new(), config).unwrap();
+        let response = api
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/collections")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+        let response = api
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/collections/foo")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+        let response = api
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/collections/foo/items")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+        let response = api
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/collections/foo/items/bar")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+        let response = api
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
     }
 }
