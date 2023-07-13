@@ -54,10 +54,16 @@ mod pgstac;
 pub use crate::pgstac::PgstacBackend;
 #[cfg(feature = "memory")]
 pub use memory::MemoryBackend;
-pub use {api::Api, backend::Backend, error::Error, items::Items, page::Page};
+pub use {
+    api::Api,
+    backend::Backend,
+    error::Error,
+    items::{GetItems, Items},
+    page::Page,
+};
 
 /// A crate-specific result type.
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(test)]
-use {tokio as _, tokio_test as _, stac_validate as _};
+use {stac_validate as _, tokio as _, tokio_test as _};

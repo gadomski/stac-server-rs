@@ -23,11 +23,12 @@ thiserror = "1"
 url = "2.3"
 
 [dev-dependencies]
-geojson = "0.24"
 futures-util = "0.3"
+geojson = "0.24"
 stac = { version = "0.5", git = "https://github.com/gadomski/stac-rs", features = ["schemars", "geo"] }
 stac-api-backend = { version = "0.1", path = "../stac-api-backend", features = ["memory", "pgstac"] }
 stac-async = { version = "0.4", git = "https://github.com/gadomski/stac-rs" }
+stac-validate = { version = "0.1", git = "https://github.com/gadomski/stac-rs" }
 tokio = { version = "1.23", features = ["rt", "macros"]}
 tokio-postgres = "0.7"
 tokio-test = "0.4"
