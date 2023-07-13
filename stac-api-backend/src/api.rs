@@ -1,4 +1,4 @@
-use crate::{Backend, Error, Items, Result};
+use crate::{Backend, Error, GetItems, Items, Result};
 use serde_json::Value;
 use stac::{Catalog, Collection, Item, Link};
 use stac_api::{
@@ -197,7 +197,12 @@ where
         if let Some(page) = self.backend.items(id, items.clone()).await? {
             let url = self.url_builder.items(id)?;
             let mut self_url = url.clone();
-            let query = serde_qs::to_string(&items)?;
+            let get_items =
+                stac_api::GetItems::try_from(items.items).map(|get_items| GetItems {
+                    get_items,
+                    paging: items.paging,
+                })?;
+            let query = serde_qs::to_string(&get_items)?;
             if !query.is_empty() {
                 self_url.set_query(Some(&query));
             }
@@ -209,16 +214,16 @@ where
             ]);
             if let Some(next) = page.next {
                 let mut url = url.clone();
-                let mut items = items.clone();
-                items.paging = next;
-                url.set_query(Some(&serde_qs::to_string(&items)?));
+                let mut get_items = get_items.clone();
+                get_items.paging = next;
+                url.set_query(Some(&serde_qs::to_string(&get_items)?));
                 item_collection.links.push(Link::new(url, "next").geojson());
             }
             if let Some(prev) = page.prev {
                 let mut url = url.clone();
-                let mut items = items.clone();
-                items.paging = prev;
-                url.set_query(Some(&serde_qs::to_string(&items)?));
+                let mut get_items = get_items.clone();
+                get_items.paging = prev;
+                url.set_query(Some(&serde_qs::to_string(&get_items)?));
                 item_collection.links.push(Link::new(url, "prev").geojson());
             }
             for item in &mut item_collection.items {

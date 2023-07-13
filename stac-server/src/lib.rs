@@ -59,4 +59,7 @@ where
 
 // Needed for integration tests.
 #[cfg(test)]
-use {futures_util as _, geojson as _, stac_async as _, tokio_postgres as _, tokio_test as _};
+use {
+    futures_util as _, geojson as _, stac_async as _, stac_validate as _, tokio_postgres as _,
+    tokio_test as _,
+};

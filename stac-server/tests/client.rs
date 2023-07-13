@@ -6,6 +6,7 @@ use stac_api::Items;
 use stac_api_backend::{Backend, Error, MemoryBackend, PgstacBackend};
 use stac_async::ApiClient;
 use stac_server::{CatalogConfig, Config};
+use stac_validate::Validate;
 use std::net::TcpListener;
 
 #[tokio::test]
@@ -66,7 +67,8 @@ where
     tokio::spawn(async { server.await.unwrap() });
 
     let client = ApiClient::new("http://127.0.0.1:7822").unwrap();
-    let _ = client.collection("collection-id").await.unwrap().unwrap();
+    let collection = client.collection("collection-id").await.unwrap().unwrap();
+    collection.validate().unwrap();
     assert_eq!(client.collection("not-an-id").await.unwrap(), None);
 
     let items: Vec<_> = client
@@ -77,6 +79,10 @@ where
         .collect()
         .await;
     assert_eq!(items.len(), 10);
+    for item in items {
+        let item = Item::try_from(item).unwrap();
+        item.validate().unwrap();
+    }
 
     let items: Vec<_> = client
         .items(
@@ -113,6 +119,22 @@ where
             "collection-id",
             Items {
                 datetime: Some("2023-07-02T00:00:00Z/2023-07-04T00:00:00Z".to_string()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .map(|result| result.unwrap())
+        .collect()
+        .await;
+    assert_eq!(items.len(), 3);
+
+    let items: Vec<_> = client
+        .items(
+            "collection-id",
+            Items {
+                bbox: Some(vec![-110.0, 43.5, -100.0, 45.5]),
+                limit: Some(1),
                 ..Default::default()
             },
         )
