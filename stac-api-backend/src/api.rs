@@ -74,20 +74,24 @@ where
     /// ```
     pub async fn root(&self) -> Result<Root> {
         let mut catalog = self.catalog.clone();
-        catalog.links = vec![
+        catalog.links.extend([
             Link::root(self.url_builder.root()),
             Link::self_(self.url_builder.root()),
-            Link::new(self.url_builder.conformance(), "conformance").json(),
-        ];
+            Link::new(self.url_builder.conformance(), "conformance")
+                .json()
+                .title("Conformance".to_string()),
+        ]);
         if self.features {
-            catalog
-                .links
-                .push(Link::new(self.url_builder.collections(), "data").json());
+            catalog.links.push(
+                Link::new(self.url_builder.collections(), "data")
+                    .json()
+                    .title("Collections".to_string()),
+            );
         }
         for collection in self.backend.collections().await? {
-            catalog
-                .links
-                .push(Link::child(self.url_builder.collection(&collection.id)?))
+            catalog.links.push(
+                Link::child(self.url_builder.collection(&collection.id)?).title(collection.title),
+            )
         }
         Ok(Root {
             catalog,
@@ -146,8 +150,8 @@ where
             self.add_collection_links(collection)?;
         }
         let links = vec![
-            Link::root(self.url_builder.root()),
-            Link::self_(self.url_builder.collections()),
+            Link::root(self.url_builder.root()).title(self.catalog.title.clone()),
+            Link::self_(self.url_builder.collections()).title("Collections".to_string()),
         ];
         Ok(Collections {
             collections,
@@ -217,7 +221,7 @@ where
             }
             let mut item_collection = page.item_collection;
             item_collection.links.extend([
-                Link::root(self.url_builder.root()),
+                Link::root(self.url_builder.root()).title(self.catalog.title.clone()),
                 Link::collection(self.url_builder.collection(id)?),
                 Link::self_(self_url).geojson(),
             ]);
@@ -237,7 +241,9 @@ where
             }
             for item in &mut item_collection.items {
                 let mut links = vec![
-                    serde_json::to_value(Link::root(self.url_builder.root()))?,
+                    serde_json::to_value(
+                        Link::root(self.url_builder.root()).title(self.catalog.title.clone()),
+                    )?,
                     serde_json::to_value(Link::parent(self.url_builder.collection(id)?))?,
                     serde_json::to_value(Link::collection(self.url_builder.collection(id)?))?,
                 ];
@@ -283,7 +289,7 @@ where
         if let Some(mut item) = self.backend.item(collection_id, id).await? {
             let collection_url = self.url_builder.collection(collection_id)?;
             item.links.extend([
-                Link::root(self.url_builder.root()),
+                Link::root(self.url_builder.root()).title(self.catalog.title.clone()),
                 Link::parent(collection_url.clone()),
                 Link::collection(collection_url),
                 Link::self_(self.url_builder.item(collection_id, id)?).geojson(),
@@ -295,14 +301,21 @@ where
     }
 
     fn add_collection_links(&self, collection: &mut Collection) -> Result<()> {
-        collection.links.push(Link::root(self.url_builder.root()));
-        collection.links.push(Link::parent(self.url_builder.root()));
         collection
             .links
-            .push(Link::self_(self.url_builder.collection(&collection.id)?));
+            .push(Link::root(self.url_builder.root()).title(self.catalog.title.clone()));
         collection
             .links
-            .push(Link::new(self.url_builder.items(&collection.id)?, "items").geojson());
+            .push(Link::parent(self.url_builder.root()).title(self.catalog.title.clone()));
+        collection.links.push(
+            Link::self_(self.url_builder.collection(&collection.id)?)
+                .title(collection.title.clone()),
+        );
+        collection.links.push(
+            Link::new(self.url_builder.items(&collection.id)?, "items")
+                .geojson()
+                .title("Items".to_string()),
+        );
         Ok(())
     }
 }

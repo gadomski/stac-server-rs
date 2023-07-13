@@ -6,6 +6,7 @@ use aide::{
 use axum::{
     extract::{Path, Query, State},
     http::{header::CONTENT_TYPE, HeaderMap, StatusCode},
+    response::Html,
     Extension, Json, Router,
 };
 use stac::Link;
@@ -17,16 +18,14 @@ use stac_api_backend::{Api, Backend, Items};
 /// # Examples
 ///
 /// ```
-/// use stac_server::{Config, CatalogConfig};
+/// use stac::Catalog;
 /// use stac_api_backend::MemoryBackend;
+/// use stac_server::Config;
 ///
 /// let config = Config {
 ///     addr: "http://localhost:7822".to_string(),
 ///     features: true,
-///     catalog: CatalogConfig {
-///         id: "an-id".to_string(),
-///         description: "a description".to_string(),
-///     },
+///     catalog: Catalog::new("an-id", "A description"),
 /// };
 /// let backend = MemoryBackend::new();
 /// let api = stac_server::api(backend, config).unwrap();
@@ -43,8 +42,7 @@ where
         },
         ..OpenApi::default()
     };
-    let catalog = config.catalog.into_catalog();
-    let mut builder = Api::new(backend, catalog, &root_url)?;
+    let mut builder = Api::new(backend, config.catalog, &root_url)?;
     builder.features = config.features;
     let mut router = ApiRouter::new()
         .api_route("/", get(root))
@@ -67,6 +65,7 @@ where
     }
     Ok(router
         .route("/api", get(service_desc))
+        .route("/api.html", get(service_doc))
         .with_state(builder)
         .finish_api(&mut open_api)
         .layer(Extension(open_api)))
@@ -77,9 +76,15 @@ where
     stac_api_backend::Error: From<<B as Backend>::Error>,
 {
     let mut root = api.root().await.map_err(internal_server_error)?;
-    let mut link = Link::new(api.url_builder.service_desc(), "service-desc");
-    link.r#type = Some("application/vnd.oai.openapi+json;version=3.1".to_string());
-    root.catalog.links.push(link);
+    root.catalog.links.extend([
+        Link::new(api.url_builder.service_desc(), "service-desc")
+            .r#type("application/vnd.oai.openapi+json;version=3.1".to_string()),
+        Link::new(
+            format!("{}.html", api.url_builder.service_desc()),
+            "service-doc",
+        )
+        .r#type("text/html".to_string()),
+    ]);
     Ok(Json(root))
 }
 
@@ -92,6 +97,34 @@ async fn service_desc(Extension(api): Extension<OpenApi>) -> impl IntoApiRespons
             .unwrap(),
     );
     (headers, Json(api))
+}
+
+async fn service_doc<B: Backend>(State(api): State<Api<B>>) -> Html<String> {
+    Html(format!("<!DOCTYPE html>
+    <html>
+      <head>
+        <title>Redoc</title>
+        <!-- needed for adaptive design -->
+        <meta charset=\"utf-8\"/>
+        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
+        <link href=\"https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700\" rel=\"stylesheet\">
+    
+        <!--
+        Redoc doesn't change outer page styles
+        -->
+        <style>
+          body {{
+            margin: 0;
+            padding: 0;
+          }}
+        </style>
+      </head>
+      <body>
+        <redoc spec-url='{}'></redoc>
+        <script src=\"https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js\"> </script>
+      </body>
+    </html>
+    ", api.url_builder.service_desc()))
 }
 
 async fn conformance<B: Backend>(State(api): State<Api<B>>) -> impl IntoApiResponse
@@ -207,12 +240,12 @@ async fn not_implemented() -> (StatusCode, String) {
 
 #[cfg(test)]
 mod tests {
-    use crate::{CatalogConfig, Config};
+    use crate::Config;
     use axum::{
         body::Body,
         http::{header::CONTENT_TYPE, Request, StatusCode},
     };
-    use stac::{Collection, Item};
+    use stac::{Catalog, Collection, Item};
     use stac_api_backend::{Backend, MemoryBackend};
     use tower::ServiceExt;
 
@@ -220,10 +253,7 @@ mod tests {
         Config {
             addr: "http://localhost:7822".to_string(),
             features: true,
-            catalog: CatalogConfig {
-                id: "test-catalog".to_string(),
-                description: "A description".to_string(),
-            },
+            catalog: Catalog::new("test-catalog", "A description"),
         }
     }
 
