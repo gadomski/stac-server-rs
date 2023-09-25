@@ -9,7 +9,6 @@ use axum::{
     response::Html,
     Extension, Json, Router,
 };
-use stac::Link;
 use stac_api::{GetItems, Root};
 use stac_api_backend::{Api, Backend, Items};
 
@@ -75,16 +74,7 @@ async fn root<B: Backend>(State(api): State<Api<B>>) -> Result<Json<Root>, (Stat
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
 {
-    let mut root = api.root().await.map_err(internal_server_error)?;
-    root.catalog.links.extend([
-        Link::new(api.url_builder.service_desc(), "service-desc")
-            .r#type("application/vnd.oai.openapi+json;version=3.1".to_string()),
-        Link::new(
-            format!("{}.html", api.url_builder.service_desc()),
-            "service-doc",
-        )
-        .r#type("text/html".to_string()),
-    ]);
+    let root = api.root().await.map_err(internal_server_error)?;
     Ok(Json(root))
 }
 

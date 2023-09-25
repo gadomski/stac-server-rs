@@ -3,7 +3,8 @@
 //! The [STAC API specification](https://github.com/radiantearth/stac-api-spec)
 //! describes how [STAC](https://github.com/radiantearth/stac-spec) objects
 //! should be served over the network. This crate defines an interface for
-//! fetching STAC objects from storage, and serving them via a STAC API server.
+//! fetching STAC objects from storage, and providing JSON endpoints to a STAC
+//! API server.
 //!
 //! The goal of this crate is to provide an abstraction layer between actual
 //! server implementations, which might vary from framework to framework, and
@@ -55,7 +56,7 @@ pub use crate::pgstac::PgstacBackend;
 #[cfg(feature = "memory")]
 pub use memory::MemoryBackend;
 pub use {
-    api::Api,
+    api::{Api, DEFAULT_SERVICE_DESC_MEDIA_TYPE},
     backend::Backend,
     error::Error,
     items::{GetItems, Items},
