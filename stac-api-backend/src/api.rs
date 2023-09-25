@@ -6,6 +6,9 @@ use stac_api::{
     FEATURES_URI, GEOJSON_URI, OGC_API_FEATURES_URI,
 };
 
+/// The default media type for the `service-desc` links.
+pub const DEFAULT_SERVICE_DESC_MEDIA_TYPE: &str = "application/vnd.oai.openapi+json;version=3.1";
+
 /// A structure for generating STAC API endpoints.
 #[derive(Clone, Debug)]
 pub struct Api<B: Backend> {
@@ -15,8 +18,15 @@ pub struct Api<B: Backend> {
     /// The url builder for this api.
     pub url_builder: UrlBuilder,
 
-    /// Should this api support features?
+    /// If true, this API will include links for the [Features](https://github.com/radiantearth/stac-api-spec/tree/main/ogcapi-features) endpoints.
+    ///
+    /// We don't support _just_ collections.
     pub features: bool,
+
+    /// The media type for the `service-desc` endpoint.
+    ///
+    /// Defaults to [DEFAULT_SERVICE_DESC_MEDIA_TYPE].
+    pub service_desc_media_type: String,
 
     catalog: Catalog,
 }
@@ -27,7 +37,10 @@ where
 {
     /// Creates a new endpoint generator with the given backend, catalog, and root url.
     ///
-    /// The catalog is used as the root endpoint.
+    /// The catalog is used as the root endpoint. By default, the API will
+    /// include links for
+    /// [Features](https://github.com/radiantearth/stac-api-spec/tree/main/ogcapi-features)
+    /// -- set `features` to `False` to disable this behavior.
     ///
     /// # Examples
     ///
@@ -40,21 +53,19 @@ where
     ///     Catalog::new("an-id", "a description"),
     ///     "http://stac-api-backend.test",)
     /// .unwrap();
+    /// assert!(api.features);
     /// ```
     pub fn new(backend: B, catalog: Catalog, url: &str) -> Result<Api<B>> {
         Ok(Api {
             backend,
             catalog,
             features: true,
+            service_desc_media_type: DEFAULT_SERVICE_DESC_MEDIA_TYPE.to_string(),
             url_builder: UrlBuilder::new(url)?,
         })
     }
 
-    /// Returns the root endpoint, as defined by
-    /// <https://github.com/radiantearth/stac-api-spec/tree/main/core#endpoints>.
-    ///
-    /// Note that the server is responsible for adding the service-desc link,
-    /// since we can't know the media type down here in the backend.
+    /// Returns the [root endpoint](https://github.com/radiantearth/stac-api-spec/tree/main/core#endpoints).
     ///
     /// # Examples
     ///
@@ -80,6 +91,13 @@ where
             Link::new(self.url_builder.conformance(), "conformance")
                 .json()
                 .title("Conformance".to_string()),
+            Link::new(self.url_builder.service_desc(), "service-desc")
+                .r#type(self.service_desc_media_type.clone()),
+            Link::new(
+                format!("{}.html", self.url_builder.service_desc()),
+                "service-doc",
+            )
+            .r#type("text/html".to_string()),
         ]);
         if self.features {
             catalog.links.push(
