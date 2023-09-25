@@ -1,6 +1,3 @@
 [workspace]
-members = [
-    "stac-api-backend",
-    "stac-server",
-    "stac-server-cli",
-]
+members = ["stac-api-backend", "stac-server", "stac-server-cli"]
+resolver = "2"
