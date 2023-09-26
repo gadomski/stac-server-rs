@@ -10,7 +10,7 @@ A [STAC API](https://github.com/radiantearth/stac-api-spec) written in Rust.
 | ----- | ---- |
 | **stac-api-backend** | Generic backend interface for STAC APIs |
 | **stac-server** | A STAC API server in [axum](https://github.com/tokio-rs/axum) |
-| **stac-server-cli**| A command-line interface for [stac-server](./stac-server/README.md) |
+| **stac-server-cli** | A command-line interface for [stac-server](./stac-server/README.md) |
 
 ## Usage
 
@@ -18,7 +18,7 @@ You'll need [rust](https://rustup.rs/).
 Then:
 
 ```shell
-cargo install stac-server-cli
+cargo install --git https://github.com/gadomski/stac-server-rs
 ```
 
 Any collections, items, or item collections provided on the command line will be ingested into the backend on startup.
