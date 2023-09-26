@@ -2,16 +2,15 @@
 
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/gadomski/stac-server-rs/ci.yaml?branch=main&style=for-the-badge)](https://github.com/gadomski/stac-server-rs/actions/workflows/ci.yaml)
 [![STAC API Validator](https://img.shields.io/github/actions/workflow/status/gadomski/stac-server-rs/validate.yaml?branch=main&label=STAC+API+Validator&style=for-the-badge)](https://github.com/gadomski/stac-server-rs/actions/workflows/validate.yaml)
-![Crates.io](https://img.shields.io/crates/l/stac-server?style=for-the-badge)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg?style=for-the-badge)](./CODE_OF_CONDUCT)
 
 A [STAC API](https://github.com/radiantearth/stac-api-spec) written in Rust.
 
-| Crate | Description | Badges |
-| ----- | ---- | --------- |
-| [stac-api-backend](./stac-api-backend/README.md) | Generic backend interface for STAC APIs | [![docs.rs](https://img.shields.io/docsrs/stac-api-backend?style=flat-square)](https://docs.rs/stac-api-backend/latest/stac-api-backend/) <br> [![Crates.io](https://img.shields.io/crates/v/stac-api-backend?style=flat-square)](https://crates.io/crates/stac-api-backend) |
-| [stac-server](./stac-server/README.md) | A STAC API server in [axum](https://github.com/tokio-rs/axum) | [![docs.rs](https://img.shields.io/docsrs/stac-server?style=flat-square)](https://docs.rs/stac-server/latest/stac_server/) <br> [![Crates.io](https://img.shields.io/crates/v/stac-server?style=flat-square)](https://crates.io/crates/stac-server)
-| [stac-server-cli](./stac-server-cli/README.md) | A command-line interface for [stac-server](./stac-server/README.md) | [![docs.rs](https://img.shields.io/docsrs/stac-server-cli?style=flat-square)](https://docs.rs/stac-server-cli/latest/stac_server_cli/) <br> [![Crates.io](https://img.shields.io/crates/v/stac-server-cli?style=flat-square)](https://crates.io/crates/stac-server-cli) |
+| Crate | Description |
+| ----- | ---- |
+| [stac-api-backend](./stac-api-backend/README.md) | Generic backend interface for STAC APIs |
+| [stac-server](./stac-server/README.md) | A STAC API server in [axum](https://github.com/tokio-rs/axum) |
+| [stac-server-cli](./stac-server-cli/README.md) | A command-line interface for [stac-server](./stac-server/README.md) |
 
 ## Usage
 
