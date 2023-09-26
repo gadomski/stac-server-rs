@@ -8,9 +8,9 @@ A [STAC API](https://github.com/radiantearth/stac-api-spec) written in Rust.
 
 | Crate | Description |
 | ----- | ---- |
-| [stac-api-backend](./stac-api-backend/README.md) | Generic backend interface for STAC APIs |
-| [stac-server](./stac-server/README.md) | A STAC API server in [axum](https://github.com/tokio-rs/axum) |
-| [stac-server-cli](./stac-server-cli/README.md) | A command-line interface for [stac-server](./stac-server/README.md) |
+| **stac-api-backend** | Generic backend interface for STAC APIs |
+| **stac-server** | A STAC API server in [axum](https://github.com/tokio-rs/axum) |
+| **stac-server-cli**| A command-line interface for [stac-server](./stac-server/README.md) |
 
 ## Usage
 
