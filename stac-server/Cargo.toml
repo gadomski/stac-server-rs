@@ -11,7 +11,7 @@ keywords = ["geospatial", "stac", "metadata", "geo", "raster"]
 categories = ["science", "data-structures"]
 
 [dependencies]
-aide = { version = "0.11", features = ["axum"] }
+aide = { version = "0.12", features = ["axum"] }
 axum = "0.6"
 hyper = "0.14"
 serde = { version = "1", features = ["derive"] }

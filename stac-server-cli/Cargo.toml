@@ -11,7 +11,7 @@ keywords = ["geospatial", "stac", "metadata", "geo", "raster"]
 categories = ["science", "data-structures"]
 
 [dependencies]
-aide = "0.11"
+aide = "0.12"
 axum = "0.6"
 clap = { version = "4", features = ["derive"] }
 serde = "1"
@@ -25,7 +25,7 @@ stac-server = { version = "0.1", path = "../stac-server" }
 thiserror = "1"
 tokio = { version = "1.23", features = ["macros", "rt-multi-thread"] }
 tokio-postgres = "0.7"
-toml = "0.7"
+toml = "0.8"
 
 [lib]
 path = "src/lib.rs"
