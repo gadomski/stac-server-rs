@@ -1,3 +1,5 @@
+// TODO document
+
 use serde::Deserialize;
 use stac::Value;
 use stac_api_backend::Backend;
@@ -14,6 +16,8 @@ where
     B: Backend,
     stac_api_backend::Error: From<B::Error>,
 {
+    // TODO this could probably be its own method on a backend?
+
     let mut join_set: JoinSet<Result<Value>> = JoinSet::new();
     for href in hrefs {
         join_set.spawn(async move { stac_async::read(href).await.map_err(Error::from) });
@@ -66,6 +70,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub struct Config {
     pub server: stac_server::Config,
 
+    // TODO document how to pick a backend with a config file
     #[serde(default = "BackendConfig::default")]
     pub backend: BackendConfig,
 }

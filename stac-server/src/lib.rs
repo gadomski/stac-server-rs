@@ -39,7 +39,19 @@ pub use {config::Config, error::Error, router::api};
 /// Crate-specific result type.
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Start a server.
+/// Starts a server.
+///
+/// # Examples
+///
+/// ```no_run
+/// use stac_api_backend::MemoryBackend;
+/// use stac_server::Config;
+///
+/// # tokio_test::block_on(async {
+/// // Runs forever
+/// stac_server::serve(MemoryBackend::new(), Config::default()).await.unwrap();
+/// # });
+/// ```
 pub async fn serve<B>(backend: B, config: Config) -> Result<()>
 where
     B: stac_api_backend::Backend,

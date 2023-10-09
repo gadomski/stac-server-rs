@@ -65,6 +65,25 @@ where
         })
     }
 
+    /// Sets the value of `features`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use stac::Catalog;
+    /// use stac_api_backend::{Api, MemoryBackend};
+    ///
+    /// let api = Api::new(
+    ///     MemoryBackend::new(),
+    ///     Catalog::new("an-id", "a description"),
+    ///     "http://stac-api-backend.test",)
+    /// .unwrap().features(false);
+    /// assert!(!api.features);
+    pub fn features(mut self, features: bool) -> Api<B> {
+        self.features = features;
+        self
+    }
+
     /// Returns the [root endpoint](https://github.com/radiantearth/stac-api-spec/tree/main/core#endpoints).
     ///
     /// # Examples
