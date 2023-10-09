@@ -33,20 +33,15 @@ pub fn api<B: Backend + 'static>(backend: B, config: Config) -> crate::Result<Ro
 where
     stac_api_backend::Error: From<<B as Backend>::Error>,
 {
-    let root_url = format!("http://{}", config.addr); // TODO enable https
-    let mut open_api = OpenApi {
-        info: Info {
-            description: Some(config.catalog.description.clone()),
-            ..Info::default()
-        },
-        ..OpenApi::default()
-    };
-    let mut builder = Api::new(backend, config.catalog, &root_url)?;
-    builder.features = config.features;
+    // Need to build the OpenApi now so we can consume the catalog in the
+    // Api::new call
+    let mut open_api = build_openapi(&config.catalog.description);
+    let root_url = config.root_url();
+    let api = Api::new(backend, config.catalog, &root_url)?.features(config.features);
     let mut router = ApiRouter::new()
         .api_route("/", get(root))
         .api_route("/conformance", get(conformance));
-    if builder.features {
+    if api.features {
         router = router
             .api_route("/collections", get(collections))
             .api_route("/collections/:collection_id", get(collection))
@@ -65,7 +60,7 @@ where
     Ok(router
         .route("/api", get(service_desc))
         .route("/api.html", get(service_doc))
-        .with_state(builder)
+        .with_state(api)
         .finish_api(&mut open_api)
         .layer(Extension(open_api)))
 }
@@ -166,6 +161,7 @@ where
     match stac_api::Items::try_from(get_items)
         .map_err(Error::from)
         .and_then(|mut items| {
+            // TODO use serde_urlencoded
             let paging: B::Paging = serde_qs::from_str(&serde_qs::to_string(&std::mem::take(
                 &mut items.additional_fields,
             ))?)?;
@@ -226,6 +222,16 @@ fn internal_server_error(err: stac_api_backend::Error) -> (StatusCode, String) {
 
 async fn not_implemented() -> (StatusCode, String) {
     (StatusCode::NOT_IMPLEMENTED, "not implemented".to_string())
+}
+
+fn build_openapi(description: impl ToString) -> OpenApi {
+    OpenApi {
+        info: Info {
+            description: Some(description.to_string()),
+            ..Info::default()
+        },
+        ..OpenApi::default()
+    }
 }
 
 #[cfg(test)]
