@@ -22,12 +22,12 @@ cargo install --git https://github.com/gadomski/stac-server-rs
 ```
 
 Any collections, items, or item collections provided on the command line will be ingested into the backend on startup.
-To start a memory-backed server populated with one collection and one item from the [Planetary Computer](https://planetarycomputer.microsoft.com/):
+To start a memory-backed server populated with one collection and one item from [Earth Search](https://www.element84.com/earth-search/):
 
 ```shell
 stac-server \
-    https://planetarycomputer.microsoft.com/api/stac/v1/collections/3dep-seamless \
-    https://planetarycomputer.microsoft.com/api/stac/v1/collections/3dep-seamless/items/n34w116-13
+    https://earth-search.aws.element84.com/v1/collections/landsat-c2-l2 \
+    https://earth-search.aws.element84.com/v1/collections/landsat-c2-l2/items/LC09_L2SR_082111_20231007_02_T2
 ```
 
 If you have a [pgstac](https://github.com/stac-utils/pgstac) database pre-populated with collections and items, you can point your server there:
