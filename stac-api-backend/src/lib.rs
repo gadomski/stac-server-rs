@@ -67,4 +67,16 @@ pub use {
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(test)]
-use {stac_validate as _, tokio as _, tokio_test as _};
+mod tests {
+    use {stac_validate as _, tokio as _, tokio_test as _};
+
+    #[macro_export]
+    macro_rules! assert_link {
+        ($links:expr, $rel:expr, $href:expr, $type: expr) => {{
+            use stac::Links;
+            let link = $links.link($rel).unwrap();
+            assert_eq!(link.href, $href);
+            assert_eq!(link.r#type.as_ref().unwrap(), $type);
+        }};
+    }
+}
