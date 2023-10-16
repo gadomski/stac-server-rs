@@ -18,10 +18,11 @@ pgstac = ["dep:bb8", "dep:bb8-postgres", "dep:pgstac", "dep:tokio-postgres"]
 async-trait = "0.1"
 bb8 = { version = "0.8", optional = true }
 bb8-postgres = { version = "0.8", optional = true }
+http = "0.2"
 pgstac = { version = "0.0.5", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_qs = "0.12"
+serde_urlencoded = "0.7"
 stac = { version = "0.5", features = ["schemars"] }
 stac-api = { version = "0.3", features = ["schemars"] }
 thiserror = "1"
