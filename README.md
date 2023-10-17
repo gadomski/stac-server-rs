@@ -93,16 +93,6 @@ scrips/validate --pgstac
 docker-compose down
 ```
 
-### Conda
-
-If you like [conda](https://docs.conda.io), you can use our provided environment to validate:
-
-```shell
-conda env create -f scripts/environment.yaml
-conda activate validate
-scripts/validate
-```
-
 ## License
 
 **stac-server-rs** is dual-licensed under both the MIT license and the Apache license (Version 2.0).

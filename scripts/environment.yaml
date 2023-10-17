@@ -1,8 +1,0 @@
-name: validate
-channels:
-  - conda-forge
-dependencies:
-  - geos~=3.12
-  - pip~=23.1
-  - pip:
-      - stac-api-validator~=0.6

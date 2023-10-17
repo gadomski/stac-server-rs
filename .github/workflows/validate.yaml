@@ -10,26 +10,19 @@ on:
 jobs:
   memory:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash -el {0}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
       - name: Set up Rust cache
         uses: Swatinem/rust-cache@v2
-      - name: Set up Conda cache
-        uses: actions/cache@v2
+      - uses: actions/setup-python@v4
         with:
-          path: ~/conda_pkgs_dir
-          key: conda-${{ hashFiles('scripts/environment.yaml') }}
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          mamba-version: "*"
           python-version: "3.11"
-          environment-file: scripts/environment.yaml
-          activate-environment: validate
+          cache: "pip"
+      - name: Install geos
+        run: sudo apt-get update && sudo apt-get install libgeos-c1v5 && sudo rm -rf /var/lib/apt/lists/*
+      - name: Install stac-api-validator
+        run: pip install -r scripts/requirements.txt
       - name: Validate
         run: scripts/validate
   pgstac:
@@ -46,25 +39,18 @@ jobs:
           PGDATABASE: postgis
         ports:
           - 5432:5432
-    defaults:
-      run:
-        shell: bash -el {0}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
       - name: Set up Rust cache
         uses: Swatinem/rust-cache@v2
-      - name: Set up Conda cache
-        uses: actions/cache@v2
+      - uses: actions/setup-python@v4
         with:
-          path: ~/conda_pkgs_dir
-          key: conda-${{ hashFiles('scripts/environment.yaml') }}
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          mamba-version: "*"
           python-version: "3.11"
-          environment-file: scripts/environment.yaml
-          activate-environment: validate
+          cache: "pip"
+      - name: Install geos
+        run: sudo apt-get update && sudo apt-get install libgeos-c1v5 && sudo rm -rf /var/lib/apt/lists/*
+      - name: Install stac-api-validator
+        run: pip install -r scripts/requirements.txt
       - name: Validate
         run: scripts/validate --pgstac
